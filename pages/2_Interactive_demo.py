@@ -6,6 +6,9 @@ try to keep this document to mostly direct calls to streamlit to write
 or display stuff. Use functions in other files to create and
 organise the stuff to be shown. In this example, most of the work is
 done in functions stored in files named container_(something).py
+
+This folium code is directly copied from Elliot's HSMA exercise
+https://github.com/hsma5/5b_geospatial_problems/blob/main/exercise/5B_Folium_map_Group-SOLUTION.ipynb
 """
 # ----- Imports -----
 import streamlit as st
