@@ -12,7 +12,7 @@ https://github.com/hsma5/5b_geospatial_problems/blob/main/exercise/5B_Folium_map
 """
 # ----- Imports -----
 import streamlit as st
-from streamlit_folium import folium_static
+from streamlit_folium import st_folium
 
 # Importing libraries
 import folium
@@ -73,7 +73,7 @@ folium.Choropleth(geo_data=geojson_cornwall,
 
 # Generate map
 # clinic_map
-folium_static(clinic_map)
+st_folium(clinic_map)
 
 
 
