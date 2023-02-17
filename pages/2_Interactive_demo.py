@@ -250,4 +250,5 @@ st.write('Time to draw map:', time5 - time4)
 # st.write(output)
 
 
+st.stop()
 # ----- The end! -----
