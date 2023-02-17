@@ -24,6 +24,7 @@ import numpy as np
 # Custom functions:
 from utilities_maps.fixed_params import page_setup
 
+from datetime import datetime
 
 # ###########################
 # ##### START OF SCRIPT #####
@@ -32,6 +33,9 @@ page_setup()
 
 # Title:
 st.markdown('# Folium map test')
+
+
+startTime = datetime.now()
 
 try:
     last_object_clicked_tooltip = st.session_state['last_object_clicked_tooltip']
@@ -74,6 +78,8 @@ df_placeholder = pd.DataFrame(
     columns=['LSOA11NMW', 'Placeholder']
 )
 
+time2 = datetime.now()
+
 # Choose which geojson to open:
 geojson_file = 'LSOA_' + group_hospital.replace(' ', '~') + '.geojson'
 
@@ -86,6 +92,10 @@ for i in geojson_ew['features']:
     i['id'] = i['properties']['LSOA11NMW']
 
 # st.write(geojson_ew['features'][0])
+
+
+time3 = datetime.now()
+st.write('Time to import geojson:', time3 - startTime)
 
 # st.stop()
 
@@ -102,6 +112,8 @@ df_travel_time_for_hospital_input = df_travel_time_for_hospital_input[df_travel_
 
 # Now reduce the contents of the geojson to just these nearby LSOAs:
 
+
+time4 = datetime.now()
 # Create a map
 clinic_map = folium.Map(location=[lat_hospital, long_hospital],
                         zoom_start=9,
@@ -193,6 +205,10 @@ output = st_folium(
     # feature_group_to_add=fg,
     returned_objects=[]#"last_object_clicked_tooltip"]
     )
+
+time5 = datetime.now()
+
+st.write('Time to draw map:', time5 - time4)
 
 # st.session_state['last_object_clicked_tooltip'] = output['last_object_clicked_tooltip']
 
