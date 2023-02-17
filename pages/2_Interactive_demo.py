@@ -60,7 +60,7 @@ region_hospital = df_hospital_regions['RGN11NM'].iloc[0]
 if region_hospital == 'Wales':
     group_hospital = df_hospital_regions['LHB20NM'].iloc[0]
 else:
-    group_hospital = df_hospital_regions['STP19NM'].iloc[0]
+    group_hospital = df_hospital_regions['SCN17NM'].iloc[0]
 
 # travel times
 # df_travel_times = pd.read_csv("./data_maps/clinic_travel_times.csv")
@@ -78,7 +78,7 @@ df_placeholder = pd.DataFrame(
 geojson_file = 'LSOA_' + group_hospital.replace(' ', '~') + '.geojson'
 
 # lsoa geojson
-with open('./data_maps/region_geojson/' + geojson_file) as f:
+with open('./data_maps/lhb_scn_geojson/' + geojson_file) as f:
     geojson_ew = json.load(f)
 
 ## Copy the LSOA11CD code to features.id within geojson
@@ -110,6 +110,7 @@ clinic_map = folium.Map(location=[lat_hospital, long_hospital],
                         min_zoom=0,
                         max_zoom=18
                         )
+
 # # Add markers
 # for (index, row) in df_clinics.iterrows():
 #     pop_up_text = f"The postcode for {row.loc['Name']} " + \
