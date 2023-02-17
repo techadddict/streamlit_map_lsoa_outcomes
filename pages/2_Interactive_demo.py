@@ -26,6 +26,115 @@ from utilities_maps.fixed_params import page_setup
 
 from datetime import datetime
 
+
+def import_geojson(group_hospital):
+    # Choose which geojson to open:
+    geojson_file = 'LSOA_' + group_hospital.replace(' ', '~') + '.geojson'
+
+    # lsoa geojson
+    with open('./data_maps/lhb_scn_geojson/' + geojson_file) as f:
+        geojson_ew = json.load(f)
+
+    ## Copy the LSOA11CD code to features.id within geojson
+    for i in geojson_ew['features']:
+        i['id'] = i['properties']['LSOA11NMW']
+    return geojson_ew
+
+
+def draw_map(lat_hospital, long_hospital, geojson_ew, df_placeholder, df_hospitals):
+    # Create a map
+    clinic_map = folium.Map(location=[lat_hospital, long_hospital],
+                            zoom_start=9,
+                            tiles='cartodbpositron',
+                            # Override how much people can zoom in or out:
+                            min_zoom=0,
+                            max_zoom=18
+                            )
+
+    # # Add markers
+    # for (index, row) in df_clinics.iterrows():
+    #     pop_up_text = f"The postcode for {row.loc['Name']} " + \
+    #                     f"({row.loc['Clinic']}) is {row.loc['postcode']}"
+    #     folium.Marker(location=[row.loc['lat'], row.loc['long']], 
+    #                   popup=pop_up_text, 
+    #                   tooltip=row.loc['Name']).add_to(clinic_map)
+    # folium.features.GeoJsonTooltip(['travel_time_mins'])
+    # Add choropleth
+    folium.Choropleth(geo_data=geojson_ew,
+                    name='choropleth',
+                    data=df_placeholder,
+                    columns=['LSOA11NMW', 'Placeholder'],
+                    key_on='feature.id',
+                    fill_color='OrRd',
+                    fill_opacity=0.5,
+                    line_opacity=0.5,
+                    legend_name='Placeholder',
+                    highlight=True,
+                    #   tooltip='travel_time_mins',
+                    #   smooth_factor=1.0
+                    ).add_to(clinic_map)
+
+    # fg = folium.FeatureGroup(name="test")
+
+    # Add markers
+    for (index, row) in df_hospitals.iterrows():
+        pop_up_text = f'{row.loc["Stroke Team"]}'
+
+        if last_object_clicked_tooltip == row.loc['Stroke Team']:
+            icon = folium.Icon(
+                # color='black',
+                # icon_color='white',
+                icon='star', #'fa-solid fa-hospital',#'info-sign',
+                # angle=0,
+                prefix='glyphicon')#, prefix='fa')
+        else:
+            icon = None
+
+        folium.Marker(location=[row.loc['lat'], row.loc['long']], 
+                    popup=pop_up_text, 
+                    tooltip=row.loc['Stroke Team']).add_to(clinic_map)
+        # folium.Circle(
+        #     radius=100, # metres
+        #     location=[row.loc['lat'], row.loc['long']],
+        #     popup=pop_up_text,
+        #     color='black',
+        #     tooltip=row.loc['Stroke Team'],
+        #     fill=False,
+        #     weight=1
+        # ).add_to(clinic_map)
+        # fg.add_child(
+        #     folium.Marker(location=[row.loc['lat'], row.loc['long']], 
+        #               popup=pop_up_text, 
+        #               tooltip=row.loc['Name'],
+        #               icon=icon
+        #               )
+        # )
+
+    # # Add choropleth
+    # fg.add_child(
+    #     folium.Choropleth(geo_data=geojson_cornwall,
+    #                     name='choropleth',
+    #                     data=df_travel_times,
+    #                     columns=['LSOA11CD', 'travel_time_mins'],
+    #                     key_on='feature.id',
+    #                     fill_color='OrRd',
+    #                     fill_opacity=0.5,
+    #                     line_opacity=0.5,
+    #                     legend_name='travel_time_mins',
+    #                     highlight=True
+    #                     )
+    #                     )#.add_to(clinic_map)
+
+
+    # Generate map
+    # clinic_map
+    output = st_folium(
+        clinic_map,
+        # feature_group_to_add=fg,
+        returned_objects=[]#"last_object_clicked_tooltip"]
+        )
+
+
 # ###########################
 # ##### START OF SCRIPT #####
 # ###########################
@@ -52,7 +161,6 @@ hospital_input = st.selectbox(
     'Pick a hospital',
     df_hospitals['Stroke Team']
 )
-st.write(hospital_input)
 
 # Find which region this hospital is in:
 df_hospitals_regions = pd.read_csv("./data_maps/hospitals_and_lsoas.csv")
@@ -80,17 +188,8 @@ df_placeholder = pd.DataFrame(
 
 time2 = datetime.now()
 
-# Choose which geojson to open:
-geojson_file = 'LSOA_' + group_hospital.replace(' ', '~') + '.geojson'
 
-# lsoa geojson
-with open('./data_maps/lhb_scn_geojson/' + geojson_file) as f:
-    geojson_ew = json.load(f)
-
-## Copy the LSOA11CD code to features.id within geojson
-for i in geojson_ew['features']:
-    i['id'] = i['properties']['LSOA11NMW']
-
+geojson_ew = import_geojson(group_hospital)
 # st.write(geojson_ew['features'][0])
 
 
@@ -114,97 +213,8 @@ df_travel_time_for_hospital_input = df_travel_time_for_hospital_input[df_travel_
 
 
 time4 = datetime.now()
-# Create a map
-clinic_map = folium.Map(location=[lat_hospital, long_hospital],
-                        zoom_start=9,
-                        tiles='cartodbpositron',
-                        # Override how much people can zoom in or out:
-                        min_zoom=0,
-                        max_zoom=18
-                        )
 
-# # Add markers
-# for (index, row) in df_clinics.iterrows():
-#     pop_up_text = f"The postcode for {row.loc['Name']} " + \
-#                     f"({row.loc['Clinic']}) is {row.loc['postcode']}"
-#     folium.Marker(location=[row.loc['lat'], row.loc['long']], 
-#                   popup=pop_up_text, 
-#                   tooltip=row.loc['Name']).add_to(clinic_map)
-# folium.features.GeoJsonTooltip(['travel_time_mins'])
-# Add choropleth
-folium.Choropleth(geo_data=geojson_ew,
-                  name='choropleth',
-                  data=df_placeholder,
-                  columns=['LSOA11NMW', 'Placeholder'],
-                  key_on='feature.id',
-                  fill_color='OrRd',
-                  fill_opacity=0.5,
-                  line_opacity=0.5,
-                  legend_name='Placeholder',
-                  highlight=True,
-                #   tooltip='travel_time_mins',
-                #   smooth_factor=1.0
-                  ).add_to(clinic_map)
-
-# fg = folium.FeatureGroup(name="test")
-
-# Add markers
-for (index, row) in df_hospitals.iterrows():
-    pop_up_text = f'{row.loc["Stroke Team"]}'
-
-    if last_object_clicked_tooltip == row.loc['Stroke Team']:
-        icon = folium.Icon(
-            # color='black',
-            # icon_color='white',
-            icon='star', #'fa-solid fa-hospital',#'info-sign',
-            # angle=0,
-            prefix='glyphicon')#, prefix='fa')
-    else:
-        icon = None
-
-    folium.Marker(location=[row.loc['lat'], row.loc['long']], 
-                  popup=pop_up_text, 
-                  tooltip=row.loc['Stroke Team']).add_to(clinic_map)
-    # folium.Circle(
-    #     radius=100, # metres
-    #     location=[row.loc['lat'], row.loc['long']],
-    #     popup=pop_up_text,
-    #     color='black',
-    #     tooltip=row.loc['Stroke Team'],
-    #     fill=False,
-    #     weight=1
-    # ).add_to(clinic_map)
-    # fg.add_child(
-    #     folium.Marker(location=[row.loc['lat'], row.loc['long']], 
-    #               popup=pop_up_text, 
-    #               tooltip=row.loc['Name'],
-    #               icon=icon
-    #               )
-    # )
-
-# # Add choropleth
-# fg.add_child(
-#     folium.Choropleth(geo_data=geojson_cornwall,
-#                     name='choropleth',
-#                     data=df_travel_times,
-#                     columns=['LSOA11CD', 'travel_time_mins'],
-#                     key_on='feature.id',
-#                     fill_color='OrRd',
-#                     fill_opacity=0.5,
-#                     line_opacity=0.5,
-#                     legend_name='travel_time_mins',
-#                     highlight=True
-#                     )
-#                     )#.add_to(clinic_map)
-
-
-# Generate map
-# clinic_map
-output = st_folium(
-    clinic_map,
-    # feature_group_to_add=fg,
-    returned_objects=[]#"last_object_clicked_tooltip"]
-    )
+draw_map(lat_hospital, long_hospital, geojson_ew, df_placeholder, df_hospitals)
 
 time5 = datetime.now()
 
@@ -237,7 +247,7 @@ st.write('Time to draw map:', time5 - time4)
 # }
 # }
 
-st.write(output)
+# st.write(output)
 
 
 # ----- The end! -----
