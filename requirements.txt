@@ -8,6 +8,7 @@ json5==0.9
 jsonschema==4.4
 folium==0.14
 streamlit_folium==0.11
+leafmap==0.17
 # Don't give a version for streamlit 
 # to ensure the app has the latest security updates. 
 streamlit
