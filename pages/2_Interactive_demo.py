@@ -651,8 +651,8 @@ def draw_map_tiff(lat_hospital, long_hospital, geojson_list, region_list, df_pla
     #     out_cog_rgb = src.read()
     # st.write(out_cog_rgb.shape)
 
-    import os
-    os.environ['LOCALTILESERVER_CLIENT_PREFIX'] = 'proxy/{port}'
+    # import os
+    # os.environ['LOCALTILESERVER_CLIENT_PREFIX'] = 'proxy/{port}'
 
 
     clinic_map.add_raster(out_cog,
@@ -661,15 +661,30 @@ def draw_map_tiff(lat_hospital, long_hospital, geojson_list, region_list, df_pla
                            figsize=(15, 10)
                            )
 
-    # folium.raster_layers.ImageOverlay(
-    #     # name="Mercator projection SW",
-    #     image=out_cog,#out_cog,
-    #     bounds=[[49.8647411589999976, -6.4185476299999999], [55.8110685409999974, 1.7629415090000000]],
-    #     opacity=0.6,
-    #     # interactive=True,
-    #     # cross_origin=False,
-    #     # zindex=1,
-    # ).add_to(clinic_map)
+    # import numpy as np
+    # from osgeo import gdal
+    # ds = gdal.Open(out_cog)
+    # myarray = np.array(ds.GetRasterBand(1).ReadAsArray())
+
+    # st.write(myarray)
+
+    import rasterio
+
+    with rasterio.open(out_cog, 'r') as ds:
+        myarray = ds.read()  # read all raster values
+
+    myarray = myarray[0, :, :]
+    st.write(myarray.shape)
+
+    folium.raster_layers.ImageOverlay(
+        # name="Mercator projection SW",
+        image=myarray,#out_cog,#out_cog,
+        bounds=[[49.8647411589999976, -6.4185476299999999], [55.8110685409999974, 1.7629415090000000]],
+        opacity=0.6,
+        # interactive=True,
+        # cross_origin=False,
+        # zindex=1,
+    ).add_to(clinic_map)
 
     # clinic_map.add_cog_layer(out_cog, bands=['Band 1'])# bands=bands, **vis_params)
 
