@@ -746,14 +746,14 @@ nearest_mt_hospital_geojson_list = []
 #     geojson_ew = import_geojson(region)
 #     geojson_list.append(geojson_ew)
 
-# geojson_file = 'LSOA_South~West_t.geojson'
-geojson_file = 'LSOA_(Dec_2011)_Boundaries_Super_Generalised_Clipped_(BSC)_EW_V3_reduced.geojson'
-with open('./data_maps/' + geojson_file) as f:
-    geojson_ew = json.load(f)
+# # geojson_file = 'LSOA_South~West_t.geojson'
+# geojson_file = 'LSOA_(Dec_2011)_Boundaries_Super_Generalised_Clipped_(BSC)_EW_V3_reduced.geojson'
+# with open('./data_maps/' + geojson_file) as f:
+#     geojson_ew = json.load(f)
 
-LSOA_names = []
-for i in geojson_ew['features']:
-    LSOA_names.append(i['properties']['LSOA11CD'])
+# LSOA_names = []
+# for i in geojson_ew['features']:
+#     LSOA_names.append(i['properties']['LSOA11CD'])
 # st.write(len(LSOA_names), LSOA_names[:10])
 # LSOA_names = df_travel_matrix['LSOA']
 placeholder = np.random.rand(len(LSOA_names))
@@ -775,7 +775,7 @@ df_placeholder = pd.DataFrame(
 
 # for i in geojson_ew['objects']['LSOA_South~West']['geometries']:
 #     i['id'] = i['properties']['LSOA11NMW']
-geojson_list = [geojson_ew]
+# geojson_list = [geojson_ew]
 
 # for hospital_postcode in hospital_postcode_list:
 #     try:
