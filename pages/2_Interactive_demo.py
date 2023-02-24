@@ -618,7 +618,7 @@ def draw_map_leafmap(lat_hospital, long_hospital, geojson_list, region_list, df_
 def draw_map_tiff(lat_hospital, long_hospital, geojson_list, region_list, df_placeholder, df_hospitals, nearest_hospital_geojson_list, nearest_mt_hospital_geojson_list, choro_bins=6):
     
     import leafmap.foliumap as leafmap
-    import matplotlib.cm
+    # import matplotlib.colormaps
 
     # Create a map
     clinic_map = leafmap.Map(location=[lat_hospital, long_hospital],
@@ -637,11 +637,41 @@ def draw_map_tiff(lat_hospital, long_hospital, geojson_list, region_list, df_pla
     # leafmap.image_to_cog('./data_maps/LSOA_raster_test.tif', out_cog)
 
 
-    leafmap.cog_validate(out_cog, verbose=True)
+
+    # leafmap.plot_raster(out_cog, cmap='terrain', figsize=(15, 10))
+
+    st.write(leafmap.cog_validate(out_cog))#, verbose=True))
+
+    # from PIL import Image
+    # out_cog_rgb = Image.open(out_cog)
+    # out_cog_rgb = out_cog_rgb.convert("RGB")
+
+    # import rasterio as rio
+    # with rio.open(out_cog) as src:
+    #     out_cog_rgb = src.read()
+    # st.write(out_cog_rgb.shape)
+
+    import os
+    os.environ['LOCALTILESERVER_CLIENT_PREFIX'] = 'proxy/{port}'
+
 
     clinic_map.add_raster(out_cog,
-                        #    cmap='terrain', 
-                           figsize=(15, 10))
+                        #   cmap='terrain',
+                        #    palette='inferno',
+                           figsize=(15, 10)
+                           )
+
+    # folium.raster_layers.ImageOverlay(
+    #     # name="Mercator projection SW",
+    #     image=out_cog,#out_cog,
+    #     bounds=[[49.8647411589999976, -6.4185476299999999], [55.8110685409999974, 1.7629415090000000]],
+    #     opacity=0.6,
+    #     # interactive=True,
+    #     # cross_origin=False,
+    #     # zindex=1,
+    # ).add_to(clinic_map)
+
+    # clinic_map.add_cog_layer(out_cog, bands=['Band 1'])# bands=bands, **vis_params)
 
 
     fg = folium.FeatureGroup(name='hospital_markers')
