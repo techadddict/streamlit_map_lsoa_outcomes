@@ -655,11 +655,11 @@ def draw_map_tiff(lat_hospital, long_hospital, geojson_list, region_list, df_pla
     # os.environ['LOCALTILESERVER_CLIENT_PREFIX'] = 'proxy/{port}'
 
 
-    clinic_map.add_raster(out_cog,
-                        #   cmap='terrain',
-                        #    palette='inferno',
-                           figsize=(15, 10)
-                           )
+    # clinic_map.add_raster(out_cog,
+    #                     #   cmap='terrain',
+    #                     #    palette='inferno',
+    #                        figsize=(15, 10)
+    #                        )
 
     # import numpy as np
     # from osgeo import gdal
@@ -681,6 +681,7 @@ def draw_map_tiff(lat_hospital, long_hospital, geojson_list, region_list, df_pla
         image=myarray,#out_cog,#out_cog,
         bounds=[[49.8647411589999976, -6.4185476299999999], [55.8110685409999974, 1.7629415090000000]],
         opacity=0.6,
+        mercator_project=True,
         # interactive=True,
         # cross_origin=False,
         # zindex=1,
