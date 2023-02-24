@@ -21,6 +21,8 @@ from folium.features import GeoJsonPopup, GeoJsonTooltip
 import pandas as pd
 import json
 import numpy as np
+import pickle
+# import cPickle
 
 # For the colour bar:
 import branca
@@ -454,7 +456,7 @@ def draw_map_leafmap(lat_hospital, long_hospital, geojson_list, region_list, df_
     colormap = branca.colormap.StepColormap(
         vmin=outcome_min,
         vmax=outcome_max,
-        colors=["red", "orange", "lightblue", "green", "darkgreen", 'blue'],
+        colors=["red", "orange", "LimeGreen", "green", "darkgreen", 'blue'],
         caption='Placeholder',
         index=choro_bins
     )
@@ -520,7 +522,7 @@ def draw_map_leafmap(lat_hospital, long_hospital, geojson_list, region_list, df_
             # in_geojson=geojson_ew,
             data=geojson_ew,
             tooltip=GeoJsonTooltip(
-                fields=['LSOA11NMW'],
+                fields=['LSOA11CD'],
                 aliases=[''],
                 localize=True
                 ),
@@ -532,16 +534,16 @@ def draw_map_leafmap(lat_hospital, long_hospital, geojson_list, region_list, df_
                     # "fillColor": colormap(y["properties"]["Estimate_UN"]),
                     "fillColor": colormap(
                         df_placeholder[
-                            df_placeholder['LSOA11NMW'] == y['properties']['LSOA11NMW']
+                            df_placeholder['LSOA11CD'] == y['properties']['LSOA11CD']
                             ]['Placeholder'].iloc[0]
                         ),
                     # "fillColor": colormap(df_placeholder[df_placeholder['LSOA11NMW'] == y['geometries']['properties']['LSOA11NMW']]['Placeholder'].iloc[0]),
                     # 'fillColor': 'red',
                     # 'fillColor': colour_list,
-                    'stroke':'false',
-                    'fillOpacity': 0.5,
-                    'color':'black',  # line colour
-                    'weight':0.5,
+                    # 'stroke':'false',
+                    # 'fillOpacity': 0.5,
+                    # 'color':'black',  # line colour
+                    'weight':0.1,
                     # 'dashArray': '5, 5'
                 },
             highlight_function=lambda y:{'weight': 2.0},  # highlight_function / hover_dict
@@ -557,6 +559,8 @@ def draw_map_leafmap(lat_hospital, long_hospital, geojson_list, region_list, df_
     #     )
 
 
+
+    fg = folium.FeatureGroup(name='hospital_markers')
     # Add markers
     for (index, row) in df_hospitals.iterrows():
         # pop_up_text = f'{row.loc["Stroke Team"]}'
@@ -572,22 +576,30 @@ def draw_map_leafmap(lat_hospital, long_hospital, geojson_list, region_list, df_
         #     icon = None
 
 
-        # fg.add_child(
-        # folium.Marker(
-        clinic_map.add_marker(
+        fg.add_child(
+        folium.Marker(
+        # clinic_map.add_marker(
             location=[row.loc['lat'], row.loc['long']],
                     # popup=pop_up_text,
                     tooltip=row.loc['Stroke Team']
-        # ))
-                    )#.add_to(clinic_map)
+        ))
+                    # )#.add_to(clinic_map)
 
+    fg.add_to(clinic_map)
 
     # folium.map.LayerControl().add_to(clinic_map)
     clinic_map.add_layer_control()
     # fg.add_child(folium.map.LayerControl())
 
     # Generate map
-    clinic_map.to_streamlit()
+    hello = clinic_map.to_streamlit()
+    # hello = clinic_map.show_in_browser()
+
+    # with open('pickle_test.p', 'wb') as pickle_file:
+    #     pickle.dump(hello, pickle_file)
+
+    # st.write(type(hello))
+    # st.write(hello)
     # clinic_map
     # output = st_folium(
     #     clinic_map,
@@ -601,6 +613,55 @@ def draw_map_leafmap(lat_hospital, long_hospital, geojson_list, region_list, df_
     #     )
     # st.write(output)
     # st.stop()
+
+
+def draw_map_tiff(lat_hospital, long_hospital, geojson_list, region_list, df_placeholder, df_hospitals, nearest_hospital_geojson_list, nearest_mt_hospital_geojson_list, choro_bins=6):
+    
+    import leafmap.foliumap as leafmap
+    import matplotlib.cm
+
+    # Create a map
+    clinic_map = leafmap.Map(location=[lat_hospital, long_hospital],
+                            zoom_start=9,
+                            tiles='cartodbpositron',
+                            # prefer_canvas=True,
+                            # Override how much people can zoom in or out:
+                            min_zoom=0,
+                            max_zoom=18,
+                            width=1200,
+                            height=600
+                            )
+
+
+    out_cog = 'LSOA_cog_test.tif'
+    # leafmap.image_to_cog('./data_maps/LSOA_raster_test.tif', out_cog)
+
+
+    leafmap.cog_validate(out_cog, verbose=True)
+
+    clinic_map.add_raster(out_cog,
+                        #    cmap='terrain', 
+                           figsize=(15, 10))
+
+
+    fg = folium.FeatureGroup(name='hospital_markers')
+    # Add markers
+    for (index, row) in df_hospitals.iterrows():
+        fg.add_child(
+        folium.Marker(
+        # clinic_map.add_marker(
+            location=[row.loc['lat'], row.loc['long']],
+                    # popup=pop_up_text,
+                    tooltip=row.loc['Stroke Team']
+        ))
+                    # )#.add_to(clinic_map)
+
+    fg.add_to(clinic_map)
+
+    clinic_map.add_layer_control()
+
+    # Generate map
+    hello = clinic_map.to_streamlit()
 
 
 # ###########################
@@ -622,7 +683,7 @@ except KeyError:
 
 ## Load data files
 # Hospital info
-df_hospitals = pd.read_csv("./data_maps/stroke_hospitals_2022.csv")
+df_hospitals = pd.read_csv("./data_maps/stroke_hospitals_22_reduced.csv")
 
 # Select a hospital of interest
 hospital_input = st.selectbox(
@@ -681,18 +742,18 @@ region_list = [
 geojson_list = []
 nearest_hospital_geojson_list = []
 nearest_mt_hospital_geojson_list = []
-for region in region_list:
-    geojson_ew = import_geojson(region)
-    geojson_list.append(geojson_ew)
+# for region in region_list:
+#     geojson_ew = import_geojson(region)
+#     geojson_list.append(geojson_ew)
 
 # geojson_file = 'LSOA_South~West_t.geojson'
-geojson_file = 'LSOA_(Dec_2011)_Boundaries_Super_Generalised_Clipped_(BSC)_EW_V3.geojson'
+geojson_file = 'LSOA_(Dec_2011)_Boundaries_Super_Generalised_Clipped_(BSC)_EW_V3_reduced.geojson'
 with open('./data_maps/' + geojson_file) as f:
     geojson_ew = json.load(f)
 
 LSOA_names = []
 for i in geojson_ew['features']:
-    LSOA_names.append(i['properties']['LSOA11NMW'])
+    LSOA_names.append(i['properties']['LSOA11CD'])
 # st.write(len(LSOA_names), LSOA_names[:10])
 # LSOA_names = df_travel_matrix['LSOA']
 placeholder = np.random.rand(len(LSOA_names))
@@ -700,7 +761,7 @@ table_placeholder = np.stack(np.array([LSOA_names, placeholder], dtype=object), 
 # st.write(table_placeholder)
 df_placeholder = pd.DataFrame(
     data=table_placeholder,
-    columns=['LSOA11NMW', 'Placeholder']
+    columns=['LSOA11CD', 'Placeholder']
 )
 
 # st.write(df_placeholder)
@@ -743,9 +804,33 @@ time4 = datetime.now()
 # draw_map_plotly(df_placeholder, geojson_ew, lat_hospital, long_hospital)
 
 # draw_map_circles(lat_hospital, long_hospital, df_placeholder, df_hospitals, df_lsoa_regions)
-# 
+
+# with st.spinner(text='Drawing map'):
+#     draw_map_leafmap(lat_hospital, long_hospital, geojson_list, region_list, df_placeholder, df_hospitals, nearest_hospital_geojson_list, nearest_mt_hospital_geojson_list)#, choro_bins)
+
+
 with st.spinner(text='Drawing map'):
-    draw_map_leafmap(lat_hospital, long_hospital, geojson_list, region_list, df_placeholder, df_hospitals, nearest_hospital_geojson_list, nearest_mt_hospital_geojson_list)#, choro_bins)
+    draw_map_tiff(lat_hospital, long_hospital, geojson_list, region_list, df_placeholder, df_hospitals, nearest_hospital_geojson_list, nearest_mt_hospital_geojson_list)#, choro_bins)
+
+
+time5 = datetime.now()
+
+st.write('Time to draw map:', time5 - time4)
+st.stop()
+
+
+import streamlit.components.v1 as components
+with st.spinner(text='Loading map'):
+
+    with open("data_maps/folium_EW_reduced2_placeholder.html", 'r', encoding='utf-8') as HtmlFile:
+        source_code = HtmlFile.read()
+        # print(source_code)
+
+# st.write(source_code)
+
+with st.spinner(text='Drawing map'):
+    components.html(source_code, height=600)
+    # components.iframe("data_maps/folium_EW_reduced_placeholder.html", height=600)
 
 time5 = datetime.now()
 
