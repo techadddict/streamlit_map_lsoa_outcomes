@@ -615,15 +615,15 @@ def draw_map_leafmap(lat_hospital, long_hospital, geojson_list, region_list, df_
     # st.stop()
 
 
-def draw_map_tiff(myarray, lat_hospital, long_hospital, geojson_list, region_list, df_placeholder, df_hospitals, nearest_hospital_geojson_list, nearest_mt_hospital_geojson_list, choro_bins=6):
+def draw_map_tiff(myarray, geojson_list, df_hospitals):
     
     import leafmap.foliumap as leafmap
     import matplotlib.cm
 
     # Create a map
     clinic_map = leafmap.Map(
-        location=[lat_hospital, long_hospital],
-        zoom_start=9,
+        location=[53, -2.5],#lat_hospital, long_hospital],
+        zoom_start=6,
         tiles='cartodbpositron',
         # prefer_canvas=True,
         # Override how much people can zoom in or out:
@@ -638,55 +638,15 @@ def draw_map_tiff(myarray, lat_hospital, long_hospital, geojson_list, region_lis
         )
 
 
-    # leafmap.image_to_cog('./data_maps/LSOA_raster_test.tif', out_cog)
-
-
-
-    # leafmap.plot_raster(out_cog, cmap='terrain', figsize=(15, 10))
-
-    # st.write(leafmap.cog_validate(out_cog))#, verbose=True))
-
-    # from PIL import Image
-    # out_cog_rgb = Image.open(out_cog)
-    # out_cog_rgb = out_cog_rgb.convert("RGB")
-
-    # import rasterio as rio
-    # with rio.open(out_cog) as src:
-    #     out_cog_rgb = src.read()
-    # st.write(out_cog_rgb.shape)
-
-    # import os
-    # os.environ['LOCALTILESERVER_CLIENT_PREFIX'] = 'proxy/{port}'
-
-
-    # clinic_map.add_raster(out_cog,
-    #                     #   cmap='terrain',
-    #                     #    palette='inferno',
-    #                        figsize=(15, 10)
-    #                        )
-
-    # import numpy as np
-    # from osgeo import gdal
-    # ds = gdal.Open(out_cog)
-    # myarray = np.array(ds.GetRasterBand(1).ReadAsArray())
-
-    # st.write(myarray)
-
-
-    # def colour_func(x):
-    #     vmin = 15
-    #     vmax = 34740
-    #     cmap = matplotlib.cm.get_cmap('inferno')
-    #     val = (x - vmin) / (vmax - vmin)
-    #     return cmap(val)
-
+    # TO DO - pull out bounds from the input array 
+    # (something in the notebook does this already)
 
     folium.raster_layers.ImageOverlay(
-        # name="Mercator projection SW",
+        name='Outcomes',
         image=myarray,#out_cog,#out_cog,
-        # bounds=[[49.8647411589999976, -6.4185476299999999], [55.8110685409999974, 1.7629415090000000]],
-        bounds=[[49.6739854059999999, -6.6230848580000004], [56.0018242949999987, 1.9674787370000004]],
-        # opacity=0.6,
+        bounds=[[49.8647411589999976, -6.4185476299999999], [55.8110685409999974, 1.7629415090000000]],
+        # bounds=[[49.6739854059999999, -6.6230848580000004], [56.0018242949999987, 1.9674787370000004]],
+        opacity=0.6,
         mercator_project=True,
         # colormap=colour_func,
         # interactive=True,
@@ -694,38 +654,19 @@ def draw_map_tiff(myarray, lat_hospital, long_hospital, geojson_list, region_lis
         # zindex=1,
     ).add_to(clinic_map)
 
-    # clinic_map.add_cog_layer(out_cog, bands=['Band 1'])# bands=bands, **vis_params)
-
     for geojson_ew in geojson_list:
         folium.GeoJson(
-        # clinic_map.add_geojson(
-            # in_geojson=geojson_ew,
             data=geojson_ew,
-            tooltip=GeoJsonTooltip(
+            popup=GeoJsonPopup(
                 fields=['LSOA11CD'],
                 aliases=[''],
                 localize=True
                 ),
-            # # lambda x:f"{x['properties']['LSOA11NMW']}",
-            # # popup=popup,
-            name='LSOAs',#region_list[g],
-            # style=style(geojson_ew),
-            style_function=lambda y:{  # style / style_function
-                    # "fillColor": colormap(y["properties"]["Estimate_UN"]),
-                    # "fillColor": colormap(
-                    #     df_placeholder[
-                    #         df_placeholder['LSOA11CD'] == y['properties']['LSOA11CD']
-                    #         ]['Placeholder'].iloc[0]
-                    #     ),
-                    # "fillColor": colormap(df_placeholder[df_placeholder['LSOA11NMW'] == y['geometries']['properties']['LSOA11NMW']]['Placeholder'].iloc[0]),
-                    'fillColor': 'rgba(0, 0, 0, 0)', #'red',
-                    # 'fillColor': colour_list,
-                    # 'stroke':'false',
-                    # 'fillOpacity': 0.5,
-                    # 'color':'black',  # line colour
+            name='LSOA outlines',
+            style_function=lambda y:{  
+                    'fillColor': 'rgba(0, 0, 0, 0)',
                     'color': 'rgba(0, 0, 0, 0)',
                     'weight':0.1,
-                    # 'dashArray': '5, 5'
                 },
             highlight_function=lambda y:{'weight': 2.0, 'color': 'black'},  # highlight_function / hover_dict
             # smooth_factor=1.5,  # 2.0 is about the upper limit here
@@ -734,24 +675,27 @@ def draw_map_tiff(myarray, lat_hospital, long_hospital, geojson_list, region_lis
     
 
 
-    fg = folium.FeatureGroup(name='hospital_markers')
+    fg = folium.FeatureGroup(name='Hospital markers')
     # Add markers
     for (index, row) in df_hospitals.iterrows():
         fg.add_child(
-        folium.Marker(
-        # clinic_map.add_marker(
+        folium.CircleMarker(
+            radius=2.2, # pixels
             location=[row.loc['lat'], row.loc['long']],
-                    # popup=pop_up_text,
-                    tooltip=row.loc['Stroke Team']
+            # popup=pop_up_text,
+            color='black',
+            tooltip=row.loc['Stroke Team'],
+            fill=True,
+            fillColor='red',
+            fillOpacity=1,
+            weight=1
         ))
-                    # )#.add_to(clinic_map)
-
     fg.add_to(clinic_map)
 
     clinic_map.add_layer_control()
 
     # Generate map
-    hello = clinic_map.to_streamlit()
+    clinic_map.to_streamlit()
 
 
 # ###########################
@@ -765,36 +709,31 @@ st.markdown('# Folium map test')
 
 startTime = datetime.now()
 
-try:
-    last_object_clicked_tooltip = st.session_state['last_object_clicked_tooltip']
-except KeyError:
-    last_object_clicked_tooltip = ''
-
 
 ## Load data files
 # Hospital info
 df_hospitals = pd.read_csv("./data_maps/stroke_hospitals_22_reduced.csv")
 
-# Select a hospital of interest
-hospital_input = st.selectbox(
-    'Pick a hospital',
-    df_hospitals['Stroke Team']
-)
+# # Select a hospital of interest
+# hospital_input = st.selectbox(
+#     'Pick a hospital',
+#     df_hospitals['Stroke Team']
+# )
 
-# Find which region this hospital is in:
-df_hospitals_regions = pd.read_csv("./data_maps/hospitals_and_lsoas.csv")
-df_hospital_regions = df_hospitals_regions[df_hospitals_regions['Stroke Team'] == hospital_input]
+# # Find which region this hospital is in:
+# df_hospitals_regions = pd.read_csv("./data_maps/hospitals_and_lsoas.csv")
+# df_hospital_regions = df_hospitals_regions[df_hospitals_regions['Stroke Team'] == hospital_input]
 
-long_hospital = df_hospital_regions['long'].iloc[0]
-lat_hospital = df_hospital_regions['lat'].iloc[0]
-region_hospital = df_hospital_regions['RGN11NM'].iloc[0]
-if region_hospital == 'Wales':
-    group_hospital = df_hospital_regions['LHB20NM'].iloc[0]
-else:
-    group_hospital = df_hospital_regions['STP19NM'].iloc[0]
+# long_hospital = df_hospital_regions['long'].iloc[0]
+# lat_hospital = df_hospital_regions['lat'].iloc[0]
+# region_hospital = df_hospital_regions['RGN11NM'].iloc[0]
+# if region_hospital == 'Wales':
+#     group_hospital = df_hospital_regions['LHB20NM'].iloc[0]
+# else:
+#     group_hospital = df_hospital_regions['STP19NM'].iloc[0]
 
-# All hospital postcodes:
-hospital_postcode_list = df_hospitals_regions['Postcode']
+# # All hospital postcodes:
+# hospital_postcode_list = df_hospitals_regions['Postcode']
 
 # travel times
 # df_travel_times = pd.read_csv("./data_maps/clinic_travel_times.csv")
@@ -821,17 +760,17 @@ time2 = datetime.now()
 
 # # geojson_ew = import_geojson(group_hospital)
 
-region_list = [
-    'Devon',
-    'Dorset',
-    'Cornwall and the Isles of Scilly',
-    'Somerset'
-]
+# region_list = [
+#     'Devon',
+#     'Dorset',
+#     'Cornwall and the Isles of Scilly',
+#     'Somerset'
+# ]
 # region_list = ['South West']
 
 geojson_list = []
-nearest_hospital_geojson_list = []
-nearest_mt_hospital_geojson_list = []
+# nearest_hospital_geojson_list = []
+# nearest_mt_hospital_geojson_list = []
 # for region in region_list:
 #     geojson_ew = import_geojson(region)
 #     geojson_list.append(geojson_ew)
@@ -849,15 +788,15 @@ for i in geojson_ew['features']:
 
 # st.write(LSOA_names[])
 
-# st.write(len(LSOA_names), LSOA_names[:10])
-# LSOA_names = df_travel_matrix['LSOA']
-placeholder = np.random.rand(len(LSOA_names))
-table_placeholder = np.stack(np.array([LSOA_names, placeholder], dtype=object), axis=-1)
-# st.write(table_placeholder)
-df_placeholder = pd.DataFrame(
-    data=table_placeholder,
-    columns=['LSOA11CD', 'Placeholder']
-)
+# # st.write(len(LSOA_names), LSOA_names[:10])
+# # LSOA_names = df_travel_matrix['LSOA']
+# placeholder = np.random.rand(len(LSOA_names))
+# table_placeholder = np.stack(np.array([LSOA_names, placeholder], dtype=object), axis=-1)
+# # st.write(table_placeholder)
+# df_placeholder = pd.DataFrame(
+#     data=table_placeholder,
+#     columns=['LSOA11CD', 'Placeholder']
+# )
 
 # st.write(df_placeholder)
 
@@ -906,11 +845,12 @@ time4 = datetime.now()
 
 
 # Import map tiff
-out_cog = 'data_maps/LSOA_cog_colours.tif'
+# out_cog = 'data_maps/LSOA_cog_colours.tif'
 # out_cog = 'data_maps/LSOA_raster_test.tif'
-import rasterio
+out_cog = 'data_maps/LSOA_drip~ship~lvo~mt~added~utility_cog.tif'
+from rasterio import open as rast_open
 
-with rasterio.open(out_cog, 'r') as ds:
+with rast_open(out_cog, 'r') as ds:
     myarray_colours = ds.read()  # read all raster values
 
 myarray_colours = np.transpose(myarray_colours, axes=(1, 2, 0))
@@ -982,7 +922,7 @@ myarray_colours = np.transpose(myarray_colours, axes=(1, 2, 0))
 # st.write(len(np.where(myarray > 14)[0]))
 
 with st.spinner(text='Drawing map'):
-    draw_map_tiff(myarray_colours, lat_hospital, long_hospital, geojson_list, region_list, df_placeholder, df_hospitals, nearest_hospital_geojson_list, nearest_mt_hospital_geojson_list)#, choro_bins)
+    draw_map_tiff(myarray_colours, geojson_list, df_hospitals)
 
 
 time5 = datetime.now()
@@ -991,52 +931,52 @@ st.write('Time to draw map:', time5 - time4)
 st.stop()
 
 
-import streamlit.components.v1 as components
-with st.spinner(text='Loading map'):
+# import streamlit.components.v1 as components
+# with st.spinner(text='Loading map'):
 
-    with open("data_maps/folium_EW_reduced2_placeholder.html", 'r', encoding='utf-8') as HtmlFile:
-        source_code = HtmlFile.read()
-        # print(source_code)
+#     with open("data_maps/folium_EW_reduced2_placeholder.html", 'r', encoding='utf-8') as HtmlFile:
+#         source_code = HtmlFile.read()
+#         # print(source_code)
 
-# st.write(source_code)
+# # st.write(source_code)
 
-with st.spinner(text='Drawing map'):
-    components.html(source_code, height=600)
-    # components.iframe("data_maps/folium_EW_reduced_placeholder.html", height=600)
+# with st.spinner(text='Drawing map'):
+#     components.html(source_code, height=600)
+#     # components.iframe("data_maps/folium_EW_reduced_placeholder.html", height=600)
 
-time5 = datetime.now()
+# time5 = datetime.now()
 
-st.write('Time to draw map:', time5 - time4)
+# st.write('Time to draw map:', time5 - time4)
 
-# st.session_state['last_object_clicked_tooltip'] = output['last_object_clicked_tooltip']
+# # st.session_state['last_object_clicked_tooltip'] = output['last_object_clicked_tooltip']
 
-# {
-# "last_clicked":NULL
-# "last_object_clicked":NULL
-# "last_object_clicked_tooltip":NULL
-# "all_drawings":NULL
-# "last_active_drawing":NULL
-# "bounds":{
-#     "_southWest":{
-#     "lat":39.94384773921137
-#     "lng":-75.15805006027223
-#     }
-# "_northEast":{
-#     "lat":39.9553624980935
-#     "lng":-75.14249324798585
-#     }
-#     }
-# "zoom":16
-# "last_circle_radius":NULL
-# "last_circle_polygon":NULL
-# "center":{
-# "lat":39.94961
-# "lng":-75.150282
-# }
-# }
+# # {
+# # "last_clicked":NULL
+# # "last_object_clicked":NULL
+# # "last_object_clicked_tooltip":NULL
+# # "all_drawings":NULL
+# # "last_active_drawing":NULL
+# # "bounds":{
+# #     "_southWest":{
+# #     "lat":39.94384773921137
+# #     "lng":-75.15805006027223
+# #     }
+# # "_northEast":{
+# #     "lat":39.9553624980935
+# #     "lng":-75.14249324798585
+# #     }
+# #     }
+# # "zoom":16
+# # "last_circle_radius":NULL
+# # "last_circle_polygon":NULL
+# # "center":{
+# # "lat":39.94961
+# # "lng":-75.150282
+# # }
+# # }
 
-# st.write(output)
+# # st.write(output)
 
 
-# st.stop()
-# ----- The end! -----
+# # st.stop()
+# # ----- The end! -----
