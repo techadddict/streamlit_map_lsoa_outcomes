@@ -24,6 +24,8 @@ import numpy as np
 import pickle
 # import cPickle
 
+# For opening the cloud-optimised geotiff:
+from rasterio import open as rast_open
 # For the colour bar:
 import branca
 
@@ -73,6 +75,71 @@ def import_hospital_geojson(hospital_postcode, MT=False):
     # for i in geojson_ew['features']:
     #     i['id'] = i['properties']['LSOA11NMW']
     return geojson_ew
+
+
+def import_cog(out_cog):
+    with rast_open(out_cog, 'r') as ds:
+        myarray_colours = ds.read()
+
+    # For plotting, the array needs to be in the shape NxMx4. 
+    # When imported using rasterio, the array is in the shape 4xNxM. 
+    # `np.transpose()` reshapes the array to the required dimensions.
+    myarray_colours = np.transpose(myarray_colours, axes=(1, 2, 0))
+    return myarray_colours
+
+
+def import_geojson(geojson_file=''):
+    if len(geojson_file) < 1:
+        geojson_file = 'LSOA_(Dec_2011)_Boundaries_Super_Generalised_Clipped_(BSC)_EW_V3_reduced.geojson'
+    with open('./data_maps/' + geojson_file) as f:
+        geojson_ew = json.load(f)
+    return geojson_ew
+
+
+def draw_cog_on_map(clinic_map, file_name, layer_name='Cog layer', visible=True):
+
+    cog_array = import_cog(file_name)
+    # TO DO - pull out bounds from the input array 
+    # (something in the notebook does this already)
+
+    folium.raster_layers.ImageOverlay(
+        name=layer_name,
+        image=cog_array,#out_cog,#out_cog,
+        bounds=[[49.8647411589999976, -6.4185476299999999], [55.8110685409999974, 1.7629415090000000]],
+        # bounds=[[49.6739854059999999, -6.6230848580000004], [56.0018242949999987, 1.9674787370000004]],
+        opacity=0.6,
+        mercator_project=True,
+        # colormap=colour_func,
+        # interactive=True,
+        # cross_origin=False,
+        # zindex=1,
+        # overlay=False,
+        show=visible
+    ).add_to(clinic_map)
+    return clinic_map
+
+
+def draw_LSOA_outlines_on_map(clinic_map):
+    geojson_ew = import_geojson()
+
+    folium.GeoJson(
+        data=geojson_ew,
+        popup=GeoJsonPopup(
+            fields=['LSOA11CD'],
+            aliases=[''],
+            localize=True
+            ),
+        name='LSOA outlines',
+        style_function=lambda y:{  
+                'fillColor': 'rgba(0, 0, 0, 0)',
+                'color': 'rgba(0, 0, 0, 0)',
+                'weight':0.1,
+            },
+        highlight_function=lambda y:{'weight': 2.0, 'color': 'black'},  # highlight_function / hover_dict
+        # smooth_factor=1.5,  # 2.0 is about the upper limit here
+        # show=False if g > 0 else True
+        ).add_to(clinic_map)
+    return clinic_map
 
 
 def draw_map(lat_hospital, long_hospital, geojson_list, region_list, df_placeholder, df_hospitals, nearest_hospital_geojson_list, nearest_mt_hospital_geojson_list, choro_bins=6):
@@ -615,7 +682,7 @@ def draw_map_leafmap(lat_hospital, long_hospital, geojson_list, region_list, df_
     # st.stop()
 
 
-def draw_map_tiff(myarray, geojson_list, df_hospitals):
+def draw_map_tiff(df_hospitals, layer_name='Outcomes'):
     
     import leafmap.foliumap as leafmap
     import matplotlib.cm
@@ -638,40 +705,23 @@ def draw_map_tiff(myarray, geojson_list, df_hospitals):
         )
 
 
-    # TO DO - pull out bounds from the input array 
-    # (something in the notebook does this already)
+    # Import map tiff
+    # out_cog = 'data_maps/LSOA_cog_colours.tif'
+    # out_cog = 'data_maps/LSOA_raster_test.tif'
+    outcome_column = 'drip~ship~lvo~mt~added~utility'
+    cog_file_name = f'data_maps/LSOA_{outcome_column}_cog.tif'
+    outcome_column.replace('~', ' ')
+    clinic_map = draw_cog_on_map(clinic_map, cog_file_name, layer_name=outcome_column)
 
-    folium.raster_layers.ImageOverlay(
-        name='Outcomes',
-        image=myarray,#out_cog,#out_cog,
-        bounds=[[49.8647411589999976, -6.4185476299999999], [55.8110685409999974, 1.7629415090000000]],
-        # bounds=[[49.6739854059999999, -6.6230848580000004], [56.0018242949999987, 1.9674787370000004]],
-        opacity=0.6,
-        mercator_project=True,
-        # colormap=colour_func,
-        # interactive=True,
-        # cross_origin=False,
-        # zindex=1,
-    ).add_to(clinic_map)
 
-    for geojson_ew in geojson_list:
-        folium.GeoJson(
-            data=geojson_ew,
-            popup=GeoJsonPopup(
-                fields=['LSOA11CD'],
-                aliases=[''],
-                localize=True
-                ),
-            name='LSOA outlines',
-            style_function=lambda y:{  
-                    'fillColor': 'rgba(0, 0, 0, 0)',
-                    'color': 'rgba(0, 0, 0, 0)',
-                    'weight':0.1,
-                },
-            highlight_function=lambda y:{'weight': 2.0, 'color': 'black'},  # highlight_function / hover_dict
-            # smooth_factor=1.5,  # 2.0 is about the upper limit here
-            # show=False if g > 0 else True
-            ).add_to(clinic_map)
+
+    outcome_column = 'mothership~lvo~mt~added~utility'
+    cog_file_name = f'data_maps/LSOA_{outcome_column}_cog.tif'
+    outcome_column.replace('~', ' ')
+    clinic_map = draw_cog_on_map(clinic_map, cog_file_name, layer_name=outcome_column, visible=False)
+
+
+    clinic_map = draw_LSOA_outlines_on_map(clinic_map)
     
 
 
@@ -776,15 +826,13 @@ geojson_list = []
 #     geojson_list.append(geojson_ew)
 
 # # geojson_file = 'LSOA_South~West_t.geojson'
-geojson_file = 'LSOA_(Dec_2011)_Boundaries_Super_Generalised_Clipped_(BSC)_EW_V3_reduced.geojson'
-with open('./data_maps/' + geojson_file) as f:
-    geojson_ew = json.load(f)
 
-# Make a list of the order of LSOA codes in the geojson that made the geotiff
-LSOA_names = []
-for i in geojson_ew['features']:
-    LSOA_names.append(i['properties']['LSOA11CD'])
-# st.write(LSOA_names)
+
+# # Make a list of the order of LSOA codes in the geojson that made the geotiff
+# LSOA_names = []
+# for i in geojson_ew['features']:
+#     LSOA_names.append(i['properties']['LSOA11CD'])
+# # st.write(LSOA_names)
 
 # st.write(LSOA_names[])
 
@@ -809,7 +857,7 @@ for i in geojson_ew['features']:
 
 # for i in geojson_ew['objects']['LSOA_South~West']['geometries']:
 #     i['id'] = i['properties']['LSOA11NMW']
-geojson_list = [geojson_ew]
+# geojson_list = [geojson_ew]
 
 # for hospital_postcode in hospital_postcode_list:
 #     try:
@@ -834,149 +882,20 @@ st.write('Time to import geojson:', time3 - startTime)
 
 time4 = datetime.now()
 
-# draw_map(lat_hospital, long_hospital, geojson_list, region_list, df_placeholder, df_hospitals, nearest_hospital_geojson_list, nearest_mt_hospital_geojson_list)#, choro_bins)
-# draw_map_plotly(df_placeholder, geojson_ew, lat_hospital, long_hospital)
 
-# draw_map_circles(lat_hospital, long_hospital, df_placeholder, df_hospitals, df_lsoa_regions)
-
-# with st.spinner(text='Drawing map'):
-#     draw_map_leafmap(lat_hospital, long_hospital, geojson_list, region_list, df_placeholder, df_hospitals, nearest_hospital_geojson_list, nearest_mt_hospital_geojson_list)#, choro_bins)
-
-
-
-# Import map tiff
-# out_cog = 'data_maps/LSOA_cog_colours.tif'
-# out_cog = 'data_maps/LSOA_raster_test.tif'
-out_cog = 'data_maps/LSOA_drip~ship~lvo~mt~added~utility_cog.tif'
-from rasterio import open as rast_open
-
-with rast_open(out_cog, 'r') as ds:
-    myarray_colours = ds.read()  # read all raster values
-
-myarray_colours = np.transpose(myarray_colours, axes=(1, 2, 0))
-
-# st.write(myarray)
-
-# myarray = myarray[0, :, :]
-# st.write(myarray.shape)
-# # st.write(myarray)
-# st.write(
-#     len(
-#         sorted(
-#             list(
-#                 set(
-#                     myarray.ravel().tolist()
-#                 )
-#             )
-#         )
-#     )
-# )
-# st.write(len(LSOA_names) - 1) # minus 1 for the sea
-
-
-
-
-
-# myarray_colours = np.full((*myarray.shape, 4), 0.0)
-# # Alpha
-# # Set this to non-zero for all valid pixels and zero for invalid
-# # (e.g. the sea, bits of other countries)
-# myarray_colours[:, :, 3] = np.full(myarray.shape, 0.6)
-# myarray_colours[np.where(myarray == 0)[0], np.where(myarray == 0)[1], 3] = 0
-
-# # for ind_LSOA, LSOA in enumerate(LSOA_names):
-# #     # The value of this LSOA in the cog is +1
-# #     # because the value of the sea (blank areas) is 0.
-# #     value_in_cog = ind_LSOA + 1
-# #     # Find where these values are in the image:
-# #     inds_in_cog = np.where(myarray == value_in_cog)
-# #     # Look up which colour to set this to:
-# #     # TEMPORARY set to some colour:
-# #     colour_rgb = [ind_LSOA / len(LSOA_names), 0, 0]
-# #     # Update the colour array with these values:
-
-# #     # Red
-# #     myarray_colours[inds_in_cog[0], inds_in_cog[1], 0] = colour_rgb[0]
-# #     # Green
-# #     myarray_colours[inds_in_cog[0], inds_in_cog[1], 1] = colour_rgb[1]
-# #     # Blue
-# #     myarray_colours[inds_in_cog[0], inds_in_cog[1], 2] = colour_rgb[2]
-
-# # Red
-# myarray_colours[:, :, 0] = np.random.rand(*myarray.shape)
-# # Green
-# myarray_colours[:, :, 1] = np.random.rand(*myarray.shape)
-# # Blue
-# myarray_colours[:, :, 2] = np.random.rand(*myarray.shape)
-
-# time5 = datetime.now()
-# st.write('Time to make colours:', time5 - time4)
-
-# st.write(myarray_colours.shape)
-# st.write(myarray)
-# st.stop()
-
-
-# # myarray[np.where(myarray > 0)] = 1
-# st.write(len(np.where(myarray > 0)[0]))
-# st.write(len(np.where(myarray > 14)[0]))
 
 with st.spinner(text='Drawing map'):
-    draw_map_tiff(myarray_colours, geojson_list, df_hospitals)
+    draw_map_tiff(
+        # myarray_colours,
+        # geojson_list,
+        df_hospitals,
+        # layer_name=outcome_column
+        )
 
 
 time5 = datetime.now()
 
 st.write('Time to draw map:', time5 - time4)
-st.stop()
 
 
-# import streamlit.components.v1 as components
-# with st.spinner(text='Loading map'):
-
-#     with open("data_maps/folium_EW_reduced2_placeholder.html", 'r', encoding='utf-8') as HtmlFile:
-#         source_code = HtmlFile.read()
-#         # print(source_code)
-
-# # st.write(source_code)
-
-# with st.spinner(text='Drawing map'):
-#     components.html(source_code, height=600)
-#     # components.iframe("data_maps/folium_EW_reduced_placeholder.html", height=600)
-
-# time5 = datetime.now()
-
-# st.write('Time to draw map:', time5 - time4)
-
-# # st.session_state['last_object_clicked_tooltip'] = output['last_object_clicked_tooltip']
-
-# # {
-# # "last_clicked":NULL
-# # "last_object_clicked":NULL
-# # "last_object_clicked_tooltip":NULL
-# # "all_drawings":NULL
-# # "last_active_drawing":NULL
-# # "bounds":{
-# #     "_southWest":{
-# #     "lat":39.94384773921137
-# #     "lng":-75.15805006027223
-# #     }
-# # "_northEast":{
-# #     "lat":39.9553624980935
-# #     "lng":-75.14249324798585
-# #     }
-# #     }
-# # "zoom":16
-# # "last_circle_radius":NULL
-# # "last_circle_polygon":NULL
-# # "center":{
-# # "lat":39.94961
-# # "lng":-75.150282
-# # }
-# # }
-
-# # st.write(output)
-
-
-# # st.stop()
 # # ----- The end! -----
