@@ -855,13 +855,13 @@ def draw_map_tiff(df_hospitals, layer_name='Outcomes', alpha=0.6):
 
 
     # # fg_nearest_hospitals = folium.FeatureGroup(name='Nearest hospitals', show=False)
-    # # Nearest IVT hospitals:
-    # # fg_nearest_hospitals, clinic_map = draw_catchment_IVT_on_map(clinic_map, fg_nearest_hospitals)
-    # ivt_outlines, clinic_map = draw_catchment_IVT_on_map(clinic_map)
+    # Nearest IVT hospitals:
+    # fg_nearest_hospitals, clinic_map = draw_catchment_IVT_on_map(clinic_map, fg_nearest_hospitals)
+    ivt_outlines, clinic_map = draw_catchment_IVT_on_map(clinic_map)
 
-    # # Nearest MT hospitals:
-    # # fg_nearest_hospitals, clinic_map = draw_catchment_MT_on_map(clinic_map, fg_nearest_hospitals)
-    # mt_outlines, clinic_map = draw_catchment_MT_on_map(clinic_map)
+    # Nearest MT hospitals:
+    # fg_nearest_hospitals, clinic_map = draw_catchment_MT_on_map(clinic_map, fg_nearest_hospitals)
+    mt_outlines, clinic_map = draw_catchment_MT_on_map(clinic_map)
 
     # # LSOA outlines:
     # lsoa_outlines, clinic_map = draw_LSOA_outlines_on_map(clinic_map)
@@ -906,8 +906,8 @@ def draw_map_tiff(df_hospitals, layer_name='Outcomes', alpha=0.6):
     images = [cog_drip_lvo, cog_mothership_lvo]
     polygons = [
         # lsoa_outlines, 
-        # ivt_outlines, 
-        # mt_outlines,
+        ivt_outlines, 
+        mt_outlines,
         # # fg_nearest_hospitals
         ]
 
