@@ -21,7 +21,7 @@ from folium.features import GeoJsonPopup, GeoJsonTooltip
 import pandas as pd
 import json
 import numpy as np
-import pickle
+# import pickle
 # import cPickle
 
 # For opening the cloud-optimised geotiff:
@@ -90,42 +90,50 @@ def import_cog(out_cog):
 
 def import_geojson(geojson_file=''):
     if len(geojson_file) < 1:
-        geojson_file = 'LSOA_(Dec_2011)_Boundaries_Super_Generalised_Clipped_(BSC)_EW_V3_reduced.geojson'
+        geojson_file = 'LSOA_(Dec_2011)_Boundaries_Super_Generalised_Clipped_(BSC)_EW_V3_reduced3.geojson'
     with open('./data_maps/' + geojson_file) as f:
         geojson_ew = json.load(f)
     return geojson_ew
 
 
-def draw_cog_on_map(clinic_map, file_name, layer_name='Cog layer', visible=True):
+def draw_cog_on_map(clinic_map, file_name, layer_name='Cog layer', alpha=1.0, visible=True, featuregroup=None):
 
     cog_array = import_cog(file_name)
     # TO DO - pull out bounds from the input array 
     # (something in the notebook does this already)
 
-    folium.raster_layers.ImageOverlay(
+    image = folium.raster_layers.ImageOverlay(
         name=layer_name,
         image=cog_array,#out_cog,#out_cog,
         bounds=[[49.8647411589999976, -6.4185476299999999], [55.8110685409999974, 1.7629415090000000]],
         # bounds=[[49.6739854059999999, -6.6230848580000004], [56.0018242949999987, 1.9674787370000004]],
-        opacity=0.6,
+        opacity=alpha,
         mercator_project=True,
         # colormap=colour_func,
         # interactive=True,
         # cross_origin=False,
         # zindex=1,
-        # overlay=False,
+        overlay=False,
         show=visible
-    ).add_to(clinic_map)
-    return clinic_map
+    )
+    image.add_to(clinic_map)
+    
+    # if featuregroup is None:
+    #     image.add_to(clinic_map)
+    #     return clinic_map
+    # else:
+    #     featuregroup.add_child(image)
+    #     return featuregroup
+    return image, clinic_map
 
 
 def draw_LSOA_outlines_on_map(clinic_map):
     geojson_ew = import_geojson()
 
-    folium.GeoJson(
+    lsoa_outlines = folium.GeoJson(
         data=geojson_ew,
         popup=GeoJsonPopup(
-            fields=['LSOA11CD'],
+            fields=['LSOA11NM'],
             aliases=[''],
             localize=True
             ),
@@ -138,8 +146,83 @@ def draw_LSOA_outlines_on_map(clinic_map):
         highlight_function=lambda y:{'weight': 2.0, 'color': 'black'},  # highlight_function / hover_dict
         # smooth_factor=1.5,  # 2.0 is about the upper limit here
         # show=False if g > 0 else True
-        ).add_to(clinic_map)
-    return clinic_map
+        )
+    lsoa_outlines.add_to(clinic_map)
+    return lsoa_outlines, clinic_map
+
+
+def draw_catchment_IVT_on_map(clinic_map, fg=None):
+    if fg is None:
+        fg = folium.FeatureGroup(name='Nearest IVT hospitals', show=False)
+    dir = './data_maps/lsoa_nearest_hospital/'
+    import os
+    files = os.listdir(dir)
+    files = [file for file in files if '_MT_' not in file]
+    for file in files:
+        with open(dir + file) as f:
+            geojson = json.load(f)
+        fg.add_child(
+            folium.GeoJson(
+                data=geojson,
+                # popup=GeoJsonPopup(
+                #     fields=['LSOA11NM'],
+                #     aliases=[''],
+                #     localize=True
+                #     ),
+                # name='LSOA outlines',
+                style_function=lambda y:{ 
+                        'fillColor': 'rgba(0, 0, 0, 0)',
+                        'color': 'rgba(255, 255, 255, 255)',
+                        'weight':1.0,
+                    },
+                highlight_function=lambda y:{
+                    'weight': 2.0,
+                    'fillColor': 'rgba(255, 255, 255, 127)'
+                    },  # highlight_function / hover_dict
+                # smooth_factor=1.5,  # 2.0 is about the upper limit here
+                # show=False
+                )
+        )
+    fg.add_to(clinic_map)
+    return fg, clinic_map
+
+
+def draw_catchment_MT_on_map(clinic_map, fg=None):
+    if fg is None:
+        fg = folium.FeatureGroup(name='Nearest MT hospitals', show=False)
+    dir = './data_maps/lsoa_nearest_hospital/'
+    import os
+    files = os.listdir(dir)
+    files = [file for file in files if '_MT_' in file]
+    for file in files:
+        with open(dir + file) as f:
+            geojson = json.load(f)
+        fg.add_child(
+            folium.GeoJson(
+                data=geojson,
+                # popup=GeoJsonPopup(
+                #     fields=['LSOA11NM'],
+                #     aliases=[''],
+                #     localize=True
+                #     ),
+                # name='LSOA outlines',
+                style_function=lambda y:{ 
+                        'fillColor': 'rgba(0, 0, 0, 0)',
+                        'color': 'rgba(127, 0, 0, 255)',
+                        'weight':3.0,
+                        # 'dashArray': '5, 5'
+                    },
+                highlight_function=lambda y:{
+                    'weight': 5.0,
+                    'fillColor': 'rgba(127, 0, 0, 127)'
+                    },  # highlight_function / hover_dict
+                # smooth_factor=1.5,  # 2.0 is about the upper limit here
+                # show=False
+                )
+        )
+    fg.add_to(clinic_map)
+    return fg, clinic_map
+
 
 
 def draw_map(lat_hospital, long_hospital, geojson_list, region_list, df_placeholder, df_hospitals, nearest_hospital_geojson_list, nearest_mt_hospital_geojson_list, choro_bins=6):
@@ -682,67 +765,170 @@ def draw_map_leafmap(lat_hospital, long_hospital, geojson_list, region_list, df_
     # st.stop()
 
 
-def draw_map_tiff(df_hospitals, layer_name='Outcomes'):
+def draw_map_tiff(df_hospitals, layer_name='Outcomes', alpha=0.6):
     
     import leafmap.foliumap as leafmap
     import matplotlib.cm
 
-    # Create a map
+    # Create a map base without tiles:
     clinic_map = leafmap.Map(
-        location=[53, -2.5],#lat_hospital, long_hospital],
+        location=[53, -2.5],  # Somewhere in the middle of the map
         zoom_start=6,
-        tiles='cartodbpositron',
-        # prefer_canvas=True,
         # Override how much people can zoom in or out:
-        min_zoom=0,
-        max_zoom=18,
+        # min_zoom=0,
+        # max_zoom=18,
         width=1200,
         height=600,
+        # Remove extra controls for stuff we don't need:
         draw_control=False,
         scale_control=False,
         search_control=False,
-        measure_control=False
+        measure_control=False,
+        # control=False
+        tiles=None
         )
 
+    # Now add the tiles and remove the option to toggle them on and off.
+    # This means that no matter what layers we add later,
+    # the tiles will never be removed.
+    # https://stackoverflow.com/questions/61345801/featuregroup-layer-control-in-folium-only-one-active-layer
+    # New feature group:
+    base_map = folium.FeatureGroup(name='Base map', overlay=True, control=False)
+    # Place the tiles in the feature group:
+    folium.TileLayer(tiles='cartodbpositron').add_to(base_map)
+    # Draw on the map:
+    base_map.add_to(clinic_map)
 
+
+    # Draw the coloured background images.
+    # Set one to be visible on load and the others to appear when
+    # selected.
     # Import map tiff
     # out_cog = 'data_maps/LSOA_cog_colours.tif'
     # out_cog = 'data_maps/LSOA_raster_test.tif'
     outcome_column = 'drip~ship~lvo~mt~added~utility'
     cog_file_name = f'data_maps/LSOA_{outcome_column}_cog.tif'
     outcome_column.replace('~', ' ')
-    clinic_map = draw_cog_on_map(clinic_map, cog_file_name, layer_name=outcome_column)
+    cog_drip_lvo, clinic_map = draw_cog_on_map(clinic_map, cog_file_name, layer_name=outcome_column, alpha=alpha)
 
 
 
     outcome_column = 'mothership~lvo~mt~added~utility'
     cog_file_name = f'data_maps/LSOA_{outcome_column}_cog.tif'
     outcome_column.replace('~', ' ')
-    clinic_map = draw_cog_on_map(clinic_map, cog_file_name, layer_name=outcome_column, visible=False)
+
+    # fg_cmap = folium.FeatureGroup(name=outcome_column)
+    cog_mothership_lvo, clinic_map = draw_cog_on_map(clinic_map, cog_file_name, layer_name=outcome_column, alpha=alpha, visible=False, featuregroup=None)
 
 
-    clinic_map = draw_LSOA_outlines_on_map(clinic_map)
+    # Draw a colourbar.
+    outcome_min = 0
+    outcome_max = 1
+    choro_bins = np.linspace(outcome_min, outcome_max, 7)
+
+    import matplotlib.pyplot as plt
+    # Get colours as (R, G, B, A) arrays:
+    colours = plt.get_cmap('inferno')(np.linspace(0, 1, len(choro_bins)))
+    # Update alpha to match the opacity of the background image:
+    colours[:, 3] = alpha
+    # Convert colours to tuple so that branca understands them:
+    colours = [tuple(colour) for colour in colours]
+
+    # Make a new discrete colour map:
+    colormap = branca.colormap.LinearColormap(
+        vmin=outcome_min,
+        vmax=outcome_max,
+        colors=colours,
+        caption='Placeholder',
+        index=choro_bins
+    )
+    colormap.add_to(clinic_map)
+    # fg_cmap.add_child(colormap)
+
+    # fg_cmap.add_to(clinic_map)
+
+    # folium.map.CustomPane(
+    #     'Nearest hospitals pane',
+    #     z_index=625,
+    #     pointer_events=False
+    #     )
+
+
+    # fg_nearest_hospitals = folium.FeatureGroup(name='Nearest hospitals', show=False)
+    # Nearest IVT hospitals:
+    # fg_nearest_hospitals, clinic_map = draw_catchment_IVT_on_map(clinic_map, fg_nearest_hospitals)
+    ivt_outlines, clinic_map = draw_catchment_IVT_on_map(clinic_map)
+
+    # Nearest MT hospitals:
+    # fg_nearest_hospitals, clinic_map = draw_catchment_MT_on_map(clinic_map, fg_nearest_hospitals)
+    mt_outlines, clinic_map = draw_catchment_MT_on_map(clinic_map)
+
+    # LSOA outlines:
+    lsoa_outlines, clinic_map = draw_LSOA_outlines_on_map(clinic_map)
     
 
-
-    fg = folium.FeatureGroup(name='Hospital markers')
-    # Add markers
+    # Hospital markers:
+    # Place all markers into a FeatureGroup so that
+    # in the layer contfg_cmaprols they can be shown or removed
+    # with a single click, instead of toggling each marker
+    # individually.
+    fg_markers = folium.FeatureGroup(
+        name='Hospital markers',
+        # Remove from the layer control:
+        control=False
+        )
+    # Iterate over the dataframe to get hospital coordinates
+    # and to choose the colour of the marker.
     for (index, row) in df_hospitals.iterrows():
-        fg.add_child(
-        folium.CircleMarker(
-            radius=2.2, # pixels
-            location=[row.loc['lat'], row.loc['long']],
-            # popup=pop_up_text,
-            color='black',
-            tooltip=row.loc['Stroke Team'],
-            fill=True,
-            fillColor='red',
-            fillOpacity=1,
-            weight=1
-        ))
-    fg.add_to(clinic_map)
+        if row.loc['Use_MT'] > 0:
+            colour = 'red'
+        elif row.loc['Use_IVT'] > 0:
+            colour = 'white'
+        else:
+            colour = ''
+        if len(colour) > 0:
+            fg_markers.add_child(
+                folium.CircleMarker(
+                    radius=2.6, # pixels
+                    location=[row.loc['lat'], row.loc['long']],
+                    # popup=pop_up_text,
+                    color='black',
+                    tooltip=row.loc['Stroke Team'],
+                    fill=True,
+                    fillColor=colour,
+                    fillOpacity=1,
+                    weight=1,
+                )
+            )
+    fg_markers.add_to(clinic_map)
 
-    clinic_map.add_layer_control()
+
+    images = [cog_drip_lvo, cog_mothership_lvo]
+    polygons = [
+        lsoa_outlines, 
+        ivt_outlines, 
+        mt_outlines,
+        # fg_nearest_hospitals
+        ]
+
+    # Put everything not later specified in this layer control:
+    # clinic_map.add_layer_control(collapsed=False)
+    folium.LayerControl(
+        collapsed=False, name='Background image').add_to(clinic_map)
+    # Anything specified in further GroupedLayerControl boxes
+    # will be removed from the previous control and appear in here:
+    folium.plugins.GroupedLayerControl(
+        {
+            # 'Background image': images,
+            'Shapes': polygons
+        },
+        collapsed=False,
+        exclusive_groups=False, # True for radio, false for checkbox
+    ).add_to(clinic_map)
+
+    # Set z-order of the elements:
+    # (can add multiple things in here but the lag increases)
+    clinic_map.keep_in_front(fg_markers)
 
     # Generate map
     clinic_map.to_streamlit()
@@ -804,8 +990,6 @@ df_placeholder = pd.DataFrame(
 df_lsoa_regions = pd.read_csv('./data_maps/LSOA_regions.csv')
 
 
-
-time2 = datetime.now()
 
 
 # # geojson_ew = import_geojson(group_hospital)
@@ -874,11 +1058,6 @@ geojson_list = []
 
 # st.write(geojson_ew['features'][0])
 
-
-time3 = datetime.now()
-st.write('Time to import geojson:', time3 - startTime)
-
-# st.stop()
 
 time4 = datetime.now()
 
