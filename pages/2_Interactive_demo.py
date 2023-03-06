@@ -883,7 +883,7 @@ def draw_map_tiff(df_hospitals, layer_name='Outcomes', alpha=0.6):
     #     z_index=625,
     #     pointer_events=False
     #     )
-    
+
     # Make a new discrete colour map:
     colormap = branca.colormap.LinearColormap(
         vmin=outcome_min,
@@ -902,53 +902,53 @@ def draw_map_tiff(df_hospitals, layer_name='Outcomes', alpha=0.6):
 
 
 
-    # # fg_nearest_hospitals = folium.FeatureGroup(name='Nearest hospitals', show=False)
-    # Nearest IVT hospitals:
-    # fg_nearest_hospitals, clinic_map = draw_catchment_IVT_on_map(clinic_map, fg_nearest_hospitals)
-    ivt_outlines, clinic_map = draw_catchment_IVT_on_map(clinic_map)
+    # # # fg_nearest_hospitals = folium.FeatureGroup(name='Nearest hospitals', show=False)
+    # # Nearest IVT hospitals:
+    # # fg_nearest_hospitals, clinic_map = draw_catchment_IVT_on_map(clinic_map, fg_nearest_hospitals)
+    # ivt_outlines, clinic_map = draw_catchment_IVT_on_map(clinic_map)
 
-    # Nearest MT hospitals:
-    # fg_nearest_hospitals, clinic_map = draw_catchment_MT_on_map(clinic_map, fg_nearest_hospitals)
-    mt_outlines, clinic_map = draw_catchment_MT_on_map(clinic_map)
+    # # Nearest MT hospitals:
+    # # fg_nearest_hospitals, clinic_map = draw_catchment_MT_on_map(clinic_map, fg_nearest_hospitals)
+    # mt_outlines, clinic_map = draw_catchment_MT_on_map(clinic_map)
 
-    # # LSOA outlines:
-    # lsoa_outlines, clinic_map = draw_LSOA_outlines_on_map(clinic_map)
+    # # # LSOA outlines:
+    # # lsoa_outlines, clinic_map = draw_LSOA_outlines_on_map(clinic_map)
 
 
-    # Hospital markers:
-    # Place all markers into a FeatureGroup so that
-    # in the layer contfg_cmaprols they can be shown or removed
-    # with a single click, instead of toggling each marker
-    # individually.
-    fg_markers = folium.FeatureGroup(
-        name='Hospital markers',
-        # Remove from the layer control:
-        control=False
-        )
-    # Iterate over the dataframe to get hospital coordinates
-    # and to choose the colour of the marker.
-    for (index, row) in df_hospitals.iterrows():
-        if row.loc['Use_MT'] > 0:
-            colour = 'red'
-        elif row.loc['Use_IVT'] > 0:
-            colour = 'white'
-        else:
-            colour = ''
-        if len(colour) > 0:
-            fg_markers.add_child(
-                folium.CircleMarker(
-                    radius=2.6, # pixels
-                    location=[row.loc['lat'], row.loc['long']],
-                    # popup=pop_up_text,
-                    color='black',
-                    tooltip=row.loc['Stroke Team'],
-                    fill=True,
-                    fillColor=colour,
-                    fillOpacity=1,
-                    weight=1,
-                )
-            )
-    fg_markers.add_to(clinic_map)
+    # # Hospital markers:
+    # # Place all markers into a FeatureGroup so that
+    # # in the layer contfg_cmaprols they can be shown or removed
+    # # with a single click, instead of toggling each marker
+    # # individually.
+    # fg_markers = folium.FeatureGroup(
+    #     name='Hospital markers',
+    #     # Remove from the layer control:
+    #     control=False
+    #     )
+    # # Iterate over the dataframe to get hospital coordinates
+    # # and to choose the colour of the marker.
+    # for (index, row) in df_hospitals.iterrows():
+    #     if row.loc['Use_MT'] > 0:
+    #         colour = 'red'
+    #     elif row.loc['Use_IVT'] > 0:
+    #         colour = 'white'
+    #     else:
+    #         colour = ''
+    #     if len(colour) > 0:
+    #         fg_markers.add_child(
+    #             folium.CircleMarker(
+    #                 radius=2.6, # pixels
+    #                 location=[row.loc['lat'], row.loc['long']],
+    #                 # popup=pop_up_text,
+    #                 color='black',
+    #                 tooltip=row.loc['Stroke Team'],
+    #                 fill=True,
+    #                 fillColor=colour,
+    #                 fillOpacity=1,
+    #                 weight=1,
+    #             )
+    #         )
+    # fg_markers.add_to(clinic_map)
 
 
 
@@ -959,10 +959,10 @@ def draw_map_tiff(df_hospitals, layer_name='Outcomes', alpha=0.6):
 
     images = [cog_drip_lvo, cog_mothership_lvo]
     polygons = [
-        # lsoa_outlines, 
-        ivt_outlines, 
-        mt_outlines,
-        # # fg_nearest_hospitals
+        # # lsoa_outlines, 
+        # ivt_outlines, 
+        # mt_outlines,
+        # # # fg_nearest_hospitals
         ]
 
     # Put everything not later specified in this layer control:
@@ -982,7 +982,7 @@ def draw_map_tiff(df_hospitals, layer_name='Outcomes', alpha=0.6):
 
     # Set z-order of the elements:
     # (can add multiple things in here but the lag increases)
-    clinic_map.keep_in_front(fg_markers)
+    # clinic_map.keep_in_front(fg_markers)
 
 
     # sidebyside = folium.plugins.SideBySideLayers(
