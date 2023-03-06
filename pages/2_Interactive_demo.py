@@ -825,11 +825,11 @@ def draw_map_tiff(df_hospitals, layer_name='Outcomes', alpha=0.6):
 
     # Draw extra layers
     cog_mothership_lvo, clinic_map = draw_cog_on_map(clinic_map, cog_file_name, layer_name=outcome_column+'1', alpha=alpha, visible=False, featuregroup=None)
-    cog_mothership_lvo, clinic_map = draw_cog_on_map(clinic_map, cog_file_name, layer_name=outcome_column+'2', alpha=alpha, visible=False, featuregroup=None)
+    # cog_mothership_lvo, clinic_map = draw_cog_on_map(clinic_map, cog_file_name, layer_name=outcome_column+'2', alpha=alpha, visible=False, featuregroup=None)
 
 
-    cog_mothership_lvo, clinic_map = draw_cog_on_map(clinic_map, cog_file_name, layer_name=outcome_column+'3', alpha=alpha, visible=False, featuregroup=None)
-    cog_mothership_lvo, clinic_map = draw_cog_on_map(clinic_map, cog_file_name, layer_name=outcome_column+'4', alpha=alpha, visible=False, featuregroup=None)
+    # cog_mothership_lvo, clinic_map = draw_cog_on_map(clinic_map, cog_file_name, layer_name=outcome_column+'3', alpha=alpha, visible=False, featuregroup=None)
+    # cog_mothership_lvo, clinic_map = draw_cog_on_map(clinic_map, cog_file_name, layer_name=outcome_column+'4', alpha=alpha, visible=False, featuregroup=None)
 
 
     # Draw a colourbar.
