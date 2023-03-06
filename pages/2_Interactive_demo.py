@@ -1012,7 +1012,8 @@ page_setup()
 st.markdown('# Folium map test')
 
 
-path_to_html = './html_test.html' 
+# path_to_html = './html_test.html' 
+path_to_html = 'https://github.com/samuel-book/streamlit_map_lsoa_outcomes/blob/main/html_test.html'
 
 with open(path_to_html, 'r') as f: 
     html_data = f.read()
