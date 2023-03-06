@@ -102,6 +102,7 @@ def draw_cog_on_map(clinic_map, file_name, layer_name='Cog layer', alpha=1.0, vi
     # TO DO - pull out bounds from the input array 
     # (something in the notebook does this already)
 
+
     image = folium.raster_layers.ImageOverlay(
         name=layer_name,
         image=cog_array,#out_cog,#out_cog,
@@ -116,15 +117,14 @@ def draw_cog_on_map(clinic_map, file_name, layer_name='Cog layer', alpha=1.0, vi
         overlay=False,
         show=visible
     )
-    image.add_to(clinic_map)
     
-    # if featuregroup is None:
-    #     image.add_to(clinic_map)
-    #     return clinic_map
-    # else:
-    #     featuregroup.add_child(image)
-    #     return featuregroup
-    return image, clinic_map
+    if featuregroup is None:
+        image.add_to(clinic_map)
+        return image, clinic_map
+    else:
+        featuregroup.add_child(image)
+        return image, featuregroup
+    # return image, clinic_map
 
 
 def draw_LSOA_outlines_on_map(clinic_map):
@@ -806,19 +806,30 @@ def draw_map_tiff(df_hospitals, layer_name='Outcomes', alpha=0.6):
     # Import map tiff
     # out_cog = 'data_maps/LSOA_cog_colours.tif'
     # out_cog = 'data_maps/LSOA_raster_test.tif'
-    outcome_column = 'drip~ship~lvo~mt~added~utility'
-    cog_file_name = f'data_maps/LSOA_{outcome_column}_cog.tif'
-    outcome_column.replace('~', ' ')
-    cog_drip_lvo, clinic_map = draw_cog_on_map(clinic_map, cog_file_name, layer_name=outcome_column, alpha=alpha)
+    drip_outcome_column = 'drip~ship~lvo~mt~added~utility'
+    cog_file_name = f'data_maps/LSOA_{drip_outcome_column}_cog.tif'
+    drip_outcome_column = drip_outcome_column.replace('~', ' ')
+    cog_drip_lvo, clinic_map = draw_cog_on_map(clinic_map, cog_file_name, layer_name=drip_outcome_column, alpha=alpha)
 
 
 
     outcome_column = 'mothership~lvo~mt~added~utility'
     cog_file_name = f'data_maps/LSOA_{outcome_column}_cog.tif'
-    outcome_column.replace('~', ' ')
+    outcome_column = outcome_column.replace('~', ' ')
 
     # fg_cmap = folium.FeatureGroup(name=outcome_column)
     cog_mothership_lvo, clinic_map = draw_cog_on_map(clinic_map, cog_file_name, layer_name=outcome_column, alpha=alpha, visible=False, featuregroup=None)
+
+    # cog_mothership_lvo, fg_cmap = draw_cog_on_map(clinic_map, cog_file_name, layer_name=outcome_column, alpha=alpha, visible=False, featuregroup=fg_cmap)
+
+
+    # Draw extra layers
+    cog_mothership_lvo, clinic_map = draw_cog_on_map(clinic_map, cog_file_name, layer_name=outcome_column+'1', alpha=alpha, visible=False, featuregroup=None)
+    cog_mothership_lvo, clinic_map = draw_cog_on_map(clinic_map, cog_file_name, layer_name=outcome_column+'2', alpha=alpha, visible=False, featuregroup=None)
+
+
+    cog_mothership_lvo, clinic_map = draw_cog_on_map(clinic_map, cog_file_name, layer_name=outcome_column+'3', alpha=alpha, visible=False, featuregroup=None)
+    cog_mothership_lvo, clinic_map = draw_cog_on_map(clinic_map, cog_file_name, layer_name=outcome_column+'4', alpha=alpha, visible=False, featuregroup=None)
 
 
     # Draw a colourbar.
@@ -834,6 +845,13 @@ def draw_map_tiff(df_hospitals, layer_name='Outcomes', alpha=0.6):
     # Convert colours to tuple so that branca understands them:
     colours = [tuple(colour) for colour in colours]
 
+
+    # pane1 = folium.map.CustomPane(
+    #     'Map1 pane',
+    #     z_index=625,
+    #     pointer_events=False
+    #     )
+    
     # Make a new discrete colour map:
     colormap = branca.colormap.LinearColormap(
         vmin=outcome_min,
@@ -842,16 +860,46 @@ def draw_map_tiff(df_hospitals, layer_name='Outcomes', alpha=0.6):
         caption='Placeholder',
         index=choro_bins
     )
-    colormap.add_to(clinic_map)
+    clinic_map.add_child(colormap)
+    # pane1.add_child(colormap)
+    # colormap.add_to(clinic_map)
     # fg_cmap.add_child(colormap)
 
     # fg_cmap.add_to(clinic_map)
+    # pane1.add_to(clinic_map)
 
-    # folium.map.CustomPane(
-    #     'Nearest hospitals pane',
+
+    # --- COLOURBAR 2 ---
+    # Get colours as (R, G, B, A) arrays:
+    colours = plt.get_cmap('RdBu')(np.linspace(0, 1, len(choro_bins)))
+    # Update alpha to match the opacity of the background image:
+    colours[:, 3] = alpha
+    # Convert colours to tuple so that branca understands them:
+    colours = [tuple(colour) for colour in colours]
+
+
+    # pane1 = folium.map.CustomPane(
+    #     'Map1 pane',
     #     z_index=625,
     #     pointer_events=False
     #     )
+    
+    # Make a new discrete colour map:
+    colormap = branca.colormap.LinearColormap(
+        vmin=outcome_min,
+        vmax=outcome_max,
+        colors=colours,
+        caption='Placeholder',
+        index=choro_bins
+    )
+    clinic_map.add_child(colormap)
+    # pane1.add_child(colormap)
+    # colormap.add_to(clinic_map)
+    # fg_cmap.add_child(colormap)
+
+    # fg_cmap.add_to(clinic_map)
+    # pane1.add_to(clinic_map)
+
 
 
     # # fg_nearest_hospitals = folium.FeatureGroup(name='Nearest hospitals', show=False)
@@ -865,7 +913,7 @@ def draw_map_tiff(df_hospitals, layer_name='Outcomes', alpha=0.6):
 
     # # LSOA outlines:
     # lsoa_outlines, clinic_map = draw_LSOA_outlines_on_map(clinic_map)
-    
+
 
     # Hospital markers:
     # Place all markers into a FeatureGroup so that
@@ -903,6 +951,12 @@ def draw_map_tiff(df_hospitals, layer_name='Outcomes', alpha=0.6):
     fg_markers.add_to(clinic_map)
 
 
+
+    # clinic_map.split_map(
+    #     left_layer=drip_outcome_column, right_layer=outcome_column
+    # )
+
+
     images = [cog_drip_lvo, cog_mothership_lvo]
     polygons = [
         # lsoa_outlines, 
@@ -929,6 +983,17 @@ def draw_map_tiff(df_hospitals, layer_name='Outcomes', alpha=0.6):
     # Set z-order of the elements:
     # (can add multiple things in here but the lag increases)
     clinic_map.keep_in_front(fg_markers)
+
+
+    # sidebyside = folium.plugins.SideBySideLayers(
+    # #     drip_outcome_column,
+    # #     outcome_column
+    # # )#
+    # cog_mothership_lvo, cog_drip_lvo)
+
+    # sidebyside.add_to(clinic_map)
+
+
 
     # Generate map
     clinic_map.to_streamlit()
