@@ -1036,6 +1036,9 @@ with open(path_to_html, 'r') as f:
 st.components.v1.html(html_data, height=600)
 # st.components.v1.iframe('4_Project', height=600)
 
+
+st.components.v1.html(html_data, height=600)
+
 st.write('done')
 st.stop()
 
