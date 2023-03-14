@@ -1012,14 +1012,31 @@ page_setup()
 st.markdown('# Folium map test')
 
 
-# path_to_html = './html_test.html' 
-path_to_html = 'https://github.com/samuel-book/streamlit_map_lsoa_outcomes/blob/main/html_test.html'
+path_to_html = './html_test.html' 
+# path_to_html = 'https://github.com/samuel-book/streamlit_map_lsoa_outcomes/blob/main/html_test.html'
 
-with open(path_to_html, 'r') as f: 
+with open(path_to_html, 'r') as f:
     html_data = f.read()
 
+# raw_html = ('''
+# <html>
+# <head>
+# </head>
+# <body>
+#   <p>
+#   <div style = "text-align: left;">
+#     <embed style="border: none;" src="./html_test.html" dpi="300" width="100%" height="600px" />
+#   </div>
+#   </p>
+# </body>
+# </html>
+# '''
+# )
+# st.markdown(html_data, unsafe_allow_html=True)
 st.components.v1.html(html_data, height=600)
+# st.components.v1.iframe('4_Project', height=600)
 
+st.write('done')
 st.stop()
 
 
