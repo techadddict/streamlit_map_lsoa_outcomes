@@ -1012,11 +1012,18 @@ page_setup()
 st.markdown('# Folium map test')
 
 
+startTime = datetime.now()
+
+
 path_to_html = './html_test.html' 
 # path_to_html = 'https://github.com/samuel-book/streamlit_map_lsoa_outcomes/blob/main/html_test.html'
 
 with open(path_to_html, 'r') as f:
     html_data = f.read()
+
+
+time1 = datetime.now()
+st.write('Time to load HTML:', time1 - startTime)
 
 # raw_html = ('''
 # <html>
@@ -1036,14 +1043,25 @@ with open(path_to_html, 'r') as f:
 st.components.v1.html(html_data, height=600)
 # st.components.v1.iframe('4_Project', height=600)
 
+time2 = datetime.now()
+st.write('Time to draw map:', time2 - time1)
+
+
+with open(path_to_html, 'r') as f:
+    html_data = f.read()
+
+time3 = datetime.now()
+st.write('Time to read HTML:', time3 - time2)
 
 st.components.v1.html(html_data, height=600)
+
+
+time4 = datetime.now()
+st.write('Time to draw map:', time4 - time3)
 
 st.write('done')
 st.stop()
 
-
-startTime = datetime.now()
 
 
 ## Load data files
