@@ -23,6 +23,10 @@ import json
 import numpy as np
 # import pickle
 # import cPickle
+# For importing colour maps:
+import matplotlib.pyplot as plt
+import leafmap.foliumap as leafmap
+import matplotlib.cm
 
 # For opening the cloud-optimised geotiff:
 from rasterio import open as rast_open
@@ -96,7 +100,7 @@ def import_geojson(geojson_file=''):
     return geojson_ew
 
 
-def draw_cog_on_map(clinic_map, file_name, layer_name='Cog layer', alpha=1.0, visible=True, featuregroup=None):
+def draw_cog_on_map(clinic_map, file_name, layer_name='Cog layer', alpha=1.0, visible=True, featuregroup=None, which_map=0):
 
     cog_array = import_cog(file_name)
     # TO DO - pull out bounds from the input array 
@@ -118,13 +122,21 @@ def draw_cog_on_map(clinic_map, file_name, layer_name='Cog layer', alpha=1.0, vi
         show=visible
     )
     
-    if featuregroup is None:
+    if which_map == 0:
         image.add_to(clinic_map)
-        return image, clinic_map
-    else:
-        featuregroup.add_child(image)
-        return image, featuregroup
-    # return image, clinic_map
+    elif which_map == 1:
+        image.add_to(clinic_map.m1)
+    elif which_map == 2:
+        image.add_to(clinic_map.m2)
+    return image, clinic_map
+
+    # if featuregroup is None:
+    #     image.add_to(clinic_map)
+    #     return image, clinic_map
+    # else:
+    #     featuregroup.add_child(image)
+    #     return image, featuregroup
+    # # return image, clinic_map
 
 
 def draw_LSOA_outlines_on_map(clinic_map):
@@ -817,176 +829,191 @@ class BindColormap(MacroElement):
 
 
 def draw_map_tiff(df_hospitals, layer_name='Outcomes', alpha=0.6):
-    
-    import leafmap.foliumap as leafmap
-    import matplotlib.cm
+
 
     # Create a map base without tiles:
-    clinic_map = leafmap.Map(
+    # outcome_map = leafmap.Map(
+    outcome_map = folium.plugins.DualMap(
         location=[53, -2.5],  # Somewhere in the middle of the map
         zoom_start=6,
         # Override how much people can zoom in or out:
         # min_zoom=0,
         # max_zoom=18,
-        width=1200,
-        height=600,
+        # width=1200,
+        # height=600,
         # Remove extra controls for stuff we don't need:
         draw_control=False,
         scale_control=False,
         search_control=False,
         measure_control=False,
         # control=False
-        tiles=None
+        tiles=None,
+        # layout='vertical'
         )
 
     # Now add the tiles and remove the option to toggle them on and off.
     # This means that no matter what layers we add later,
     # the tiles will never be removed.
-    # https://stackoverflow.com/questions/61345801/featuregroup-layer-control-in-folium-only-one-active-layer
+    # https://stackoverflow.com/questions/61345801/
+    # featuregroup-layer-control-in-folium-only-one-active-layer
     # New feature group:
-    base_map = folium.FeatureGroup(name='Base map', overlay=True, control=False)
+    base_map = folium.FeatureGroup(
+        name='Base map', overlay=True, control=False)
     # Place the tiles in the feature group:
     folium.TileLayer(tiles='cartodbpositron').add_to(base_map)
     # Draw on the map:
-    base_map.add_to(clinic_map)
+    base_map.add_to(outcome_map)
 
 
     # Draw the coloured background images.
     # Set one to be visible on load and the others to appear when
     # selected.
-    # Import map tiff
-    # out_cog = 'data_maps/LSOA_cog_colours.tif'
-    # out_cog = 'data_maps/LSOA_raster_test.tif'
-    drip_outcome_column = 'drip~ship~lvo~mt~added~utility'
-    cog_file_name = f'data_maps/LSOA_{drip_outcome_column}_cog.tif'
-    # drip_outcome_column = drip_outcome_column.replace('~', ' ')
-    layer_name = 'Drip and ship IVT/MT LVO added utility'
-    cog_drip_lvo, clinic_map = draw_cog_on_map(clinic_map, cog_file_name, layer_name=layer_name, alpha=alpha)
+    tiff_file_strings = [
+        'drip~ship~nlvo~ivt~added~utility',
+        'mothership~nlvo~ivt~added~utility',
+        'mothership~minus~dripship~nlvo~ivt~added~utility',
+        'drip~ship~lvo~mt~added~utility',
+        'mothership~lvo~mt~added~utility',
+        'mothership~minus~dripship~lvo~mt~added~utility'
+    ]
+
+    cog_files = [
+        f'data_maps/LSOA_{s}_cog.tif'
+        for s in tiff_file_strings
+    ]
+
+    layer_names = [
+        # nLVO
+        'Drip and ship IVT nLVO added utility',
+        'Mothership IVT/nLVO added utility',
+        'nLVO advantage of Mothership (added utility)',
+        # LVO
+        'Drip and ship IVT/MT LVO added utility',
+        'Mothership MT IVT/LVO added utility',
+        'LVO advantage of Mothership (added utility)'
+    ]
+
+    tiff_layers = []
+    for t, c_file in enumerate(cog_files):
+        m = 1 if t < 3 else 2
+        # Set whether this layer will be shown on startup:
+        v = False if t > 0 else True
+        tiff_layer, outcome_map = draw_cog_on_map(
+            outcome_map,
+            c_file,
+            layer_name=layer_names[t],
+            alpha=alpha,
+            visible=v,
+            which_map=m
+            )
+        tiff_layers.append(tiff_layer)
 
 
 
-    outcome_column = 'mothership~lvo~mt~added~utility'
-    cog_file_name = f'data_maps/LSOA_{outcome_column}_cog.tif'
-    # outcome_column = outcome_column.replace('~', ' '
-    layer_name = 'Mothership MT IVT/LVO added utility'
-
-    # fg_cmap = folium.FeatureGroup(name=outcome_column)
-    cog_mothership_lvo, clinic_map = draw_cog_on_map(clinic_map, cog_file_name, layer_name=layer_name, alpha=alpha, visible=False, featuregroup=None)
-
-    # cog_mothership_lvo, fg_cmap = draw_cog_on_map(clinic_map, cog_file_name, layer_name=outcome_column, alpha=alpha, visible=False, featuregroup=fg_cmap)
-
-
-    # Draw extra layers
-    outcome_column = 'mothership~minus~dripship~lvo~mt~added~utility'
-    cog_file_name = f'data_maps/LSOA_{outcome_column}_cog.tif'
-    layer_name = 'LVO advantage of Mothership (added utility)'
-    cog_diff_lvo, clinic_map = draw_cog_on_map(clinic_map, cog_file_name, layer_name=layer_name, alpha=alpha, visible=False, featuregroup=None)
-    # cog_mothership_lvo, clinic_map = draw_cog_on_map(clinic_map, cog_file_name, layer_name=outcome_column+'2', alpha=alpha, visible=False, featuregroup=None)
-
-
-    # cog_mothership_lvo, clinic_map = draw_cog_on_map(clinic_map, cog_file_name, layer_name=outcome_column+'3', alpha=alpha, visible=False, featuregroup=None)
-    # cog_mothership_lvo, clinic_map = draw_cog_on_map(clinic_map, cog_file_name, layer_name=outcome_column+'4', alpha=alpha, visible=False, featuregroup=None)
-
-
-    # Draw a colourbar.
     outcome_min = 0.0261
     outcome_max = 0.1759
-    choro_bins = np.linspace(outcome_min, outcome_max, 7)
-
-    import matplotlib.pyplot as plt
-    # Get colours as (R, G, B, A) arrays:
-    colours = plt.get_cmap('inferno')(np.linspace(0, 1, len(choro_bins)))
-    # Update alpha to match the opacity of the background image:
-    colours[:, 3] = alpha
-    # Convert colours to tuple so that branca understands them:
-    colours = [tuple(colour) for colour in colours]
-
-
-    # pane1 = folium.map.CustomPane(
-    #     'Map1 pane',
-    #     z_index=625,
-    #     pointer_events=False
-    #     )
+    outcome_cmap = 'inferno'
+    outcome_cbar_label = 'Added utility'
     
-    # Make a new discrete colour map:
-    colormap_dripship = branca.colormap.LinearColormap(
-        vmin=outcome_min,
-        vmax=outcome_max,
-        colors=colours,
-        caption='Added utility',
-        index=choro_bins
-    )
-    clinic_map.add_child(colormap_dripship)
-
-
-    # Make a new discrete colour map:
-    colormap_mothership = branca.colormap.LinearColormap(
-        vmin=outcome_min,
-        vmax=outcome_max,
-        colors=colours,
-        caption='Added utility',
-        index=choro_bins
-    )
-    clinic_map.add_child(colormap_mothership)
-    # pane1.add_child(colormap)
-    # colormap.add_to(clinic_map)
-    # fg_cmap.add_child(colormap)
-
-    # fg_cmap.add_to(clinic_map)
-    # pane1.add_to(clinic_map)
-
-
-    # --- COLOURBAR 2 ---
-    # Get colours as (R, G, B, A) arrays:
-    colours = plt.get_cmap('bwr_r')(np.linspace(0, 1, len(choro_bins)))
-    # Update alpha to match the opacity of the background image:
-    colours[:, 3] = alpha
-    # Convert colours to tuple so that branca understands them:
-    colours = [tuple(colour) for colour in colours]
-
-
-    # pane1 = folium.map.CustomPane(
-    #     'Map1 pane',
-    #     z_index=625,
-    #     pointer_events=False
-    #     )
-
     diff_min = -0.09620000000000009
     diff_max = 0.09620000000000009
-    choro_bins = np.linspace(diff_min, diff_max, 7)
-    # Make a new discrete colour map:
-    colormap_diff = branca.colormap.LinearColormap(
-        vmin=diff_min,
-        vmax=diff_max,
-        colors=colours,
-        caption='Advantage of Mothership (added utility)',
-        index=choro_bins
-    )
-    clinic_map.add_child(colormap_diff)
-    # pane1.add_child(colormap)
-    # colormap.add_to(clinic_map)
-    # fg_cmap.add_child(colormap)
+    diff_cmap = 'bwr_r'
+    diff_cbar_label = 'Advantage of Mothership (added utility)'
 
-    # fg_cmap.add_to(clinic_map)
-    # pane1.add_to(clinic_map)
+    colourmaps = []
+    for m in [outcome_map.m1, outcome_map.m2]:
+        # --- Outcome colourbar ---
+        # Use these points as fixed colours with labels:
+        choro_bins = np.linspace(outcome_min, outcome_max, 7)
+        # Get colours as (R, G, B, A) arrays:
+        colours = plt.get_cmap(outcome_cmap)(np.linspace(0, 1, len(choro_bins)))
+        # Update alpha to match the opacity of the background image:
+        colours[:, 3] = alpha
+        # Convert colours to tuple so that branca understands them:
+        colours = [tuple(colour) for colour in colours]
+        
+        # Drip and ship colour bar:
+        colormap_dripship = branca.colormap.LinearColormap(
+            vmin=outcome_min,
+            vmax=outcome_max,
+            colors=colours,
+            caption=outcome_cbar_label,
+            index=choro_bins
+        )
+        colourmaps.append(colormap_dripship)
+        # outcome_map.add_child(colormap_dripship)
+        # colormap_dripship.add_to(outcome_map.m2)
 
 
-    # # fg_nearest_hospitals = folium.FeatureGroup(name='Nearest hospitals', show=False)
+        # Mothership colour bar:
+        colormap_mothership = branca.colormap.LinearColormap(
+            vmin=outcome_min,
+            vmax=outcome_max,
+            colors=colours,
+            caption=outcome_cbar_label,
+            index=choro_bins
+        )
+        # outcome_map.add_child(colormap_mothership)
+        colourmaps.append(colormap_mothership)
+
+
+        # --- Difference colourbar ---
+        # Use these points as fixed colours with labels:
+        choro_bins = np.linspace(diff_min, diff_max, 7)
+        # Get colours as (R, G, B, A) arrays:
+        colours = plt.get_cmap(diff_cmap)(np.linspace(0, 1, len(choro_bins)))
+        # Update alpha to match the opacity of the background image:
+        colours[:, 3] = alpha
+        # Convert colours to tuple so that branca understands them:
+        colours = [tuple(colour) for colour in colours]
+
+        # Make a new discrete colour map:
+        colormap_diff = branca.colormap.LinearColormap(
+            vmin=diff_min,
+            vmax=diff_max,
+            colors=colours,
+            caption=diff_cbar_label,
+            index=choro_bins
+        )
+        # outcome_map.add_child(colormap_diff)
+        colourmaps.append(colormap_diff)
+
+
+    # Bind colourmaps to each tiff image so that only one bar shows
+    # up at once.
+    for i in range(len(tiff_layers)):
+        if i < 3:
+            # m = outcome_map.m1 if i < 3 else outcome_map.m2
+            # m.add_child(BindColormap(tiff_layers[i], colourmaps[i]))
+            # BindColormap(tiff_layers[i], colourmaps[i]).add_to(m)
+            # st.write(i, 'top')
+            colourmaps[i].add_to(outcome_map.m1)
+            BindColormap(tiff_layers[i], colourmaps[i]).add_to(outcome_map.m1)
+        else:
+            # pass
+
+            colourmaps[i].add_to(outcome_map.m2)
+            BindColormap(tiff_layers[i], colourmaps[i]).add_to(outcome_map.m2)
+            # st.write(i, 'bottom')
+            # colourmaps[i].add_to(outcome_map)
+            # BindColormap(tiff_layers[i], colourmaps[i]).add_to(outcome_map)
+    # outcome_map.add_child(BindColormap(tiff_layers[1], colormap_mothership))
+    # outcome_map.add_child(BindColormap(tiff_layers[2], colormap_diff))
+
+
     # Nearest IVT hospitals:
-    # fg_nearest_hospitals, clinic_map = draw_catchment_IVT_on_map(clinic_map, fg_nearest_hospitals)
-    ivt_outlines, clinic_map = draw_catchment_IVT_on_map(clinic_map)
+    ivt_outlines, outcome_map = draw_catchment_IVT_on_map(outcome_map)
 
     # Nearest MT hospitals:
-    # fg_nearest_hospitals, clinic_map = draw_catchment_MT_on_map(clinic_map, fg_nearest_hospitals)
-    mt_outlines, clinic_map = draw_catchment_MT_on_map(clinic_map)
+    mt_outlines, outcome_map = draw_catchment_MT_on_map(outcome_map)
 
     # # LSOA outlines:
-    # lsoa_outlines, clinic_map = draw_LSOA_outlines_on_map(clinic_map)
+    # lsoa_outlines, outcome_map = draw_LSOA_outlines_on_map(outcome_map)
 
 
     # Hospital markers:
     # Place all markers into a FeatureGroup so that
-    # in the layer contfg_cmaprols they can be shown or removed
+    # in the layer controls they can be shown or removed
     # with a single click, instead of toggling each marker
     # individually.
     fg_markers = folium.FeatureGroup(
@@ -1017,22 +1044,9 @@ def draw_map_tiff(df_hospitals, layer_name='Outcomes', alpha=0.6):
                     weight=1,
                 )
             )
-    fg_markers.add_to(clinic_map)
+    fg_markers.add_to(outcome_map)
 
 
-
-    # clinic_map.split_map(
-    #     left_layer=drip_outcome_column, right_layer=outcome_column
-    # )
-
-    clinic_map.add_child(BindColormap(cog_drip_lvo, colormap_dripship))
-
-    clinic_map.add_child(BindColormap(cog_mothership_lvo, colormap_mothership))
-
-    clinic_map.add_child(BindColormap(cog_diff_lvo, colormap_diff))
-
-
-    images = [cog_drip_lvo, cog_mothership_lvo]
     polygons = [
         # lsoa_outlines, 
         ivt_outlines, 
@@ -1041,42 +1055,33 @@ def draw_map_tiff(df_hospitals, layer_name='Outcomes', alpha=0.6):
         ]
 
     # Put everything not later specified in this layer control:
-    # clinic_map.add_layer_control(collapsed=False)
+    # outcome_map.add_layer_control(collapsed=False)
     folium.LayerControl(
-        collapsed=False, name='Background image').add_to(clinic_map)
+        collapsed=False, 
+        name='Background image'
+        ).add_to(outcome_map)
     # Anything specified in further GroupedLayerControl boxes
     # will be removed from the previous control and appear in here:
     folium.plugins.GroupedLayerControl(
-        {
-            # 'Background image': images,
-            'Shapes': polygons
-        },
+        {'Shapes': polygons},
         collapsed=False,
         exclusive_groups=False, # True for radio, false for checkbox
-    ).add_to(clinic_map)
+    ).add_to(outcome_map)
 
     # Set z-order of the elements:
     # (can add multiple things in here but the lag increases)
-    clinic_map.keep_in_front(fg_markers)
-
-
-
-
-    # sidebyside = folium.plugins.SideBySideLayers(
-    # #     drip_outcome_column,
-    # #     outcome_column
-    # # )#
-    # cog_mothership_lvo, cog_drip_lvo)
-
-    # sidebyside.add_to(clinic_map)
+    outcome_map.keep_in_front(fg_markers)
 
 
 
     # Generate map
-    clinic_map.to_streamlit()
-    # st.write(clinic_map)
-    # clinic_map.show()
-    # clinic_map.save('html_test.html')
+    # For single map:
+    # outcome_map.to_streamlit()
+    # For DualMap:
+    # st.components.v1.html(outcome_map._repr_html_(), height=1200, width=800)
+    # st.write(outcome_map)
+    # outcome_map.show()
+    outcome_map.save('html_dual_test.html')
 
 
 
@@ -1092,7 +1097,7 @@ st.markdown('# Folium map test')
 startTime = datetime.now()
 
 
-path_to_html = './html_test.html' 
+path_to_html = './html_dual_test.html' 
 # path_to_html = 'https://github.com/samuel-book/streamlit_map_lsoa_outcomes/blob/main/html_test.html'
 
 with open(path_to_html, 'r') as f:
