@@ -765,6 +765,57 @@ def draw_map_leafmap(lat_hospital, long_hospital, geojson_list, region_list, df_
     # st.stop()
 
 
+
+from branca.element import MacroElement
+
+from jinja2 import Template
+
+class BindColormap(MacroElement):
+    """Binds a colormap to a given layer.
+
+    https://nbviewer.org/gist/BibMartin/f153aa957ddc5fadc64929abdee9ff2e
+
+    Parameters
+    ----------
+    colormap : branca.colormap.ColorMap
+        The colormap to bind.
+    """
+    def __init__(self, layer, colormap):
+        super(BindColormap, self).__init__()
+        self.layer = layer
+        self.colormap = colormap
+        # # For overlays layers:
+        # self._template = Template(u"""
+        # {% macro script(this, kwargs) %}
+        #     {{this.colormap.get_name()}}.svg[0][0].style.display = 'block';
+        #     {{this._parent.get_name()}}.on('overlayadd', function (eventLayer) {
+        #         if (eventLayer.layer == {{this.layer.get_name()}}) {
+        #             {{this.colormap.get_name()}}.svg[0][0].style.display = 'block';
+        #         }});
+        #     {{this._parent.get_name()}}.on('overlayremove', function (eventLayer) {
+        #         if (eventLayer.layer == {{this.layer.get_name()}}) {
+        #             {{this.colormap.get_name()}}.svg[0][0].style.display = 'none';
+        #         }});
+        # {% endmacro %}
+        # """)  # noqa
+
+        # For base layers:
+        self._template = Template(u"""
+        {% macro script(this, kwargs) %}
+            {{this.colormap.get_name()}}.svg[0][0].style.display = 'block';
+            {{this._parent.get_name()}}.on('layeradd', function (eventLayer) {
+                if (eventLayer.layer == {{this.layer.get_name()}}) {
+                    {{this.colormap.get_name()}}.svg[0][0].style.display = 'block';
+                }});
+            {{this._parent.get_name()}}.on('layerremove', function (eventLayer) {
+                if (eventLayer.layer == {{this.layer.get_name()}}) {
+                    {{this.colormap.get_name()}}.svg[0][0].style.display = 'none';
+                }});
+        {% endmacro %}
+        """)  # noqa
+
+
+
 def draw_map_tiff(df_hospitals, layer_name='Outcomes', alpha=0.6):
     
     import leafmap.foliumap as leafmap
@@ -808,23 +859,28 @@ def draw_map_tiff(df_hospitals, layer_name='Outcomes', alpha=0.6):
     # out_cog = 'data_maps/LSOA_raster_test.tif'
     drip_outcome_column = 'drip~ship~lvo~mt~added~utility'
     cog_file_name = f'data_maps/LSOA_{drip_outcome_column}_cog.tif'
-    drip_outcome_column = drip_outcome_column.replace('~', ' ')
-    cog_drip_lvo, clinic_map = draw_cog_on_map(clinic_map, cog_file_name, layer_name=drip_outcome_column, alpha=alpha)
+    # drip_outcome_column = drip_outcome_column.replace('~', ' ')
+    layer_name = 'Drip and ship IVT/MT LVO added utility'
+    cog_drip_lvo, clinic_map = draw_cog_on_map(clinic_map, cog_file_name, layer_name=layer_name, alpha=alpha)
 
 
 
     outcome_column = 'mothership~lvo~mt~added~utility'
     cog_file_name = f'data_maps/LSOA_{outcome_column}_cog.tif'
-    outcome_column = outcome_column.replace('~', ' ')
+    # outcome_column = outcome_column.replace('~', ' '
+    layer_name = 'Mothership MT IVT/LVO added utility'
 
     # fg_cmap = folium.FeatureGroup(name=outcome_column)
-    cog_mothership_lvo, clinic_map = draw_cog_on_map(clinic_map, cog_file_name, layer_name=outcome_column, alpha=alpha, visible=False, featuregroup=None)
+    cog_mothership_lvo, clinic_map = draw_cog_on_map(clinic_map, cog_file_name, layer_name=layer_name, alpha=alpha, visible=False, featuregroup=None)
 
     # cog_mothership_lvo, fg_cmap = draw_cog_on_map(clinic_map, cog_file_name, layer_name=outcome_column, alpha=alpha, visible=False, featuregroup=fg_cmap)
 
 
     # Draw extra layers
-    cog_mothership_lvo, clinic_map = draw_cog_on_map(clinic_map, cog_file_name, layer_name=outcome_column+'1', alpha=alpha, visible=False, featuregroup=None)
+    outcome_column = 'mothership~minus~dripship~lvo~mt~added~utility'
+    cog_file_name = f'data_maps/LSOA_{outcome_column}_cog.tif'
+    layer_name = 'LVO advantage of Mothership (added utility)'
+    cog_diff_lvo, clinic_map = draw_cog_on_map(clinic_map, cog_file_name, layer_name=layer_name, alpha=alpha, visible=False, featuregroup=None)
     # cog_mothership_lvo, clinic_map = draw_cog_on_map(clinic_map, cog_file_name, layer_name=outcome_column+'2', alpha=alpha, visible=False, featuregroup=None)
 
 
@@ -833,8 +889,8 @@ def draw_map_tiff(df_hospitals, layer_name='Outcomes', alpha=0.6):
 
 
     # Draw a colourbar.
-    outcome_min = 0
-    outcome_max = 1
+    outcome_min = 0.0261
+    outcome_max = 0.1759
     choro_bins = np.linspace(outcome_min, outcome_max, 7)
 
     import matplotlib.pyplot as plt
@@ -853,14 +909,25 @@ def draw_map_tiff(df_hospitals, layer_name='Outcomes', alpha=0.6):
     #     )
     
     # Make a new discrete colour map:
-    colormap = branca.colormap.LinearColormap(
+    colormap_dripship = branca.colormap.LinearColormap(
         vmin=outcome_min,
         vmax=outcome_max,
         colors=colours,
-        caption='Placeholder',
+        caption='Added utility',
         index=choro_bins
     )
-    clinic_map.add_child(colormap)
+    clinic_map.add_child(colormap_dripship)
+
+
+    # Make a new discrete colour map:
+    colormap_mothership = branca.colormap.LinearColormap(
+        vmin=outcome_min,
+        vmax=outcome_max,
+        colors=colours,
+        caption='Added utility',
+        index=choro_bins
+    )
+    clinic_map.add_child(colormap_mothership)
     # pane1.add_child(colormap)
     # colormap.add_to(clinic_map)
     # fg_cmap.add_child(colormap)
@@ -871,7 +938,7 @@ def draw_map_tiff(df_hospitals, layer_name='Outcomes', alpha=0.6):
 
     # --- COLOURBAR 2 ---
     # Get colours as (R, G, B, A) arrays:
-    colours = plt.get_cmap('RdBu')(np.linspace(0, 1, len(choro_bins)))
+    colours = plt.get_cmap('bwr_r')(np.linspace(0, 1, len(choro_bins)))
     # Update alpha to match the opacity of the background image:
     colours[:, 3] = alpha
     # Convert colours to tuple so that branca understands them:
@@ -884,22 +951,24 @@ def draw_map_tiff(df_hospitals, layer_name='Outcomes', alpha=0.6):
     #     pointer_events=False
     #     )
 
+    diff_min = -0.09620000000000009
+    diff_max = 0.09620000000000009
+    choro_bins = np.linspace(diff_min, diff_max, 7)
     # Make a new discrete colour map:
-    colormap = branca.colormap.LinearColormap(
-        vmin=outcome_min,
-        vmax=outcome_max,
+    colormap_diff = branca.colormap.LinearColormap(
+        vmin=diff_min,
+        vmax=diff_max,
         colors=colours,
-        caption='Placeholder',
+        caption='Advantage of Mothership (added utility)',
         index=choro_bins
     )
-    clinic_map.add_child(colormap)
+    clinic_map.add_child(colormap_diff)
     # pane1.add_child(colormap)
     # colormap.add_to(clinic_map)
     # fg_cmap.add_child(colormap)
 
     # fg_cmap.add_to(clinic_map)
     # pane1.add_to(clinic_map)
-
 
 
     # # fg_nearest_hospitals = folium.FeatureGroup(name='Nearest hospitals', show=False)
@@ -956,6 +1025,12 @@ def draw_map_tiff(df_hospitals, layer_name='Outcomes', alpha=0.6):
     #     left_layer=drip_outcome_column, right_layer=outcome_column
     # )
 
+    clinic_map.add_child(BindColormap(cog_drip_lvo, colormap_dripship))
+
+    clinic_map.add_child(BindColormap(cog_mothership_lvo, colormap_mothership))
+
+    clinic_map.add_child(BindColormap(cog_diff_lvo, colormap_diff))
+
 
     images = [cog_drip_lvo, cog_mothership_lvo]
     polygons = [
@@ -985,6 +1060,8 @@ def draw_map_tiff(df_hospitals, layer_name='Outcomes', alpha=0.6):
     clinic_map.keep_in_front(fg_markers)
 
 
+
+
     # sidebyside = folium.plugins.SideBySideLayers(
     # #     drip_outcome_column,
     # #     outcome_column
@@ -996,10 +1073,10 @@ def draw_map_tiff(df_hospitals, layer_name='Outcomes', alpha=0.6):
 
 
     # Generate map
-    # clinic_map.to_streamlit()
+    clinic_map.to_streamlit()
     # st.write(clinic_map)
     # clinic_map.show()
-    clinic_map.save('html_test.html')
+    # clinic_map.save('html_test.html')
 
 
 
@@ -1047,17 +1124,17 @@ time2 = datetime.now()
 st.write('Time to draw map:', time2 - time1)
 
 
-with open(path_to_html, 'r') as f:
-    html_data = f.read()
+# with open(path_to_html, 'r') as f:
+#     html_data = f.read()
 
-time3 = datetime.now()
-st.write('Time to read HTML:', time3 - time2)
+# time3 = datetime.now()
+# st.write('Time to read HTML:', time3 - time2)
 
-st.components.v1.html(html_data, height=600)
+# st.components.v1.html(html_data, height=600)
 
 
-time4 = datetime.now()
-st.write('Time to draw map:', time4 - time3)
+# time4 = datetime.now()
+# st.write('Time to draw map:', time4 - time3)
 
 st.write('done')
 st.stop()
