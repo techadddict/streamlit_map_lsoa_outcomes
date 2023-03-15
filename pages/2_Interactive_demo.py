@@ -106,10 +106,20 @@ def draw_cog_on_map(clinic_map, file_name, layer_name='Cog layer', alpha=1.0, vi
     # TO DO - pull out bounds from the input array 
     # (something in the notebook does this already)
 
+    # To prevent incorrect colours being displayed
+    # (some sort of folium autoscaling for small colour range?),
+    # set some pixels to red, green, blue, black, white:
+    cog_array[0][1] = [1.0, 0.0, 0.0, 1]
+    cog_array[0][2] = [0.0, 1.0, 0.0, 1]
+    cog_array[0][3] = [0.0, 0.0, 1.0, 1]
+    cog_array[0][4] = [0.0, 0.0, 0.0, 1]
+    cog_array[0][5] = [1.0, 1.0, 1.0, 1]
+    # These live in the Inner Hebrides and currently our data does
+    # not cover Scotland, so nobody should notice these random pixels.
 
     image = folium.raster_layers.ImageOverlay(
         name=layer_name,
-        image=cog_array,#out_cog,#out_cog,
+        image=cog_array, #out_cog,#out_cog,
         bounds=[[49.8647411589999976, -6.4185476299999999], [55.8110685409999974, 1.7629415090000000]],
         # bounds=[[49.6739854059999999, -6.6230848580000004], [56.0018242949999987, 1.9674787370000004]],
         opacity=alpha,
@@ -139,7 +149,7 @@ def draw_cog_on_map(clinic_map, file_name, layer_name='Cog layer', alpha=1.0, vi
     # # return image, clinic_map
 
 
-def draw_LSOA_outlines_on_map(clinic_map):
+def draw_LSOA_outlines_on_map(clinic_map, which_map=0):
     geojson_ew = import_geojson()
 
     lsoa_outlines = folium.GeoJson(
@@ -159,11 +169,18 @@ def draw_LSOA_outlines_on_map(clinic_map):
         # smooth_factor=1.5,  # 2.0 is about the upper limit here
         # show=False if g > 0 else True
         )
-    lsoa_outlines.add_to(clinic_map)
+    
+    if which_map == 0:
+        lsoa_outlines.add_to(clinic_map)
+    elif which_map == 1:
+        lsoa_outlines.add_to(clinic_map.m1)
+    elif which_map == 2:
+        lsoa_outlines.add_to(clinic_map.m2)
+    # lsoa_outlines.add_to(clinic_map)
     return lsoa_outlines, clinic_map
 
 
-def draw_catchment_IVT_on_map(clinic_map, fg=None):
+def draw_catchment_IVT_on_map(clinic_map, fg=None, which_map=0):
     if fg is None:
         fg = folium.FeatureGroup(name='Nearest IVT hospitals', show=False)
     dir = './data_maps/lsoa_nearest_hospital/'
@@ -195,11 +212,18 @@ def draw_catchment_IVT_on_map(clinic_map, fg=None):
                 # show=False
                 )
         )
-    fg.add_to(clinic_map)
+        
+    if which_map == 0:
+        fg.add_to(clinic_map)
+    elif which_map == 1:
+        fg.add_to(clinic_map.m1)
+    elif which_map == 2:
+        fg.add_to(clinic_map.m2)
+    # fg.add_to(clinic_map)
     return fg, clinic_map
 
 
-def draw_catchment_MT_on_map(clinic_map, fg=None):
+def draw_catchment_MT_on_map(clinic_map, fg=None, which_map=0):
     if fg is None:
         fg = folium.FeatureGroup(name='Nearest MT hospitals', show=False)
     dir = './data_maps/lsoa_nearest_hospital/'
@@ -232,7 +256,14 @@ def draw_catchment_MT_on_map(clinic_map, fg=None):
                 # show=False
                 )
         )
-    fg.add_to(clinic_map)
+
+    if which_map == 0:
+        fg.add_to(clinic_map)
+    elif which_map == 1:
+        fg.add_to(clinic_map.m1)
+    elif which_map == 2:
+        fg.add_to(clinic_map.m2)
+    # fg.add_to(clinic_map)
     return fg, clinic_map
 
 
@@ -874,7 +905,7 @@ def draw_map_tiff(df_hospitals, layer_name='Outcomes', alpha=0.6):
         'mothership~minus~dripship~nlvo~ivt~added~utility',
         'drip~ship~lvo~mt~added~utility',
         'mothership~lvo~mt~added~utility',
-        'mothership~minus~dripship~lvo~mt~added~utility'
+        'mothership~minus~dripship~lvo~mt~added~utility',
     ]
 
     cog_files = [
@@ -884,13 +915,13 @@ def draw_map_tiff(df_hospitals, layer_name='Outcomes', alpha=0.6):
 
     layer_names = [
         # nLVO
-        'Drip and ship IVT nLVO added utility',
-        'Mothership IVT/nLVO added utility',
-        'nLVO advantage of Mothership (added utility)',
+        'Drip and ship', #'Drip and ship IVT nLVO added utility',
+        'Mothership', #'Mothership IVT/nLVO added utility',
+        'Advantage of Mothership', #nLVO advantage of Mothership (added utility)',
         # LVO
-        'Drip and ship IVT/MT LVO added utility',
-        'Mothership MT IVT/LVO added utility',
-        'LVO advantage of Mothership (added utility)'
+        'Drip and ship', #'Drip and ship IVT/MT LVO added utility',
+        'Mothership', #'Mothership MT IVT/LVO added utility',
+        'Advantage of Mothership', #'LVO advantage of Mothership (added utility)'
     ]
 
     tiff_layers = []
@@ -1002,10 +1033,12 @@ def draw_map_tiff(df_hospitals, layer_name='Outcomes', alpha=0.6):
 
 
     # Nearest IVT hospitals:
-    ivt_outlines, outcome_map = draw_catchment_IVT_on_map(outcome_map)
+    ivt_outlines, outcome_map = draw_catchment_IVT_on_map(outcome_map, which_map=1)
+    ivt_outlines_2, outcome_map = draw_catchment_IVT_on_map(outcome_map, which_map=2)
 
     # Nearest MT hospitals:
-    mt_outlines, outcome_map = draw_catchment_MT_on_map(outcome_map)
+    mt_outlines, outcome_map = draw_catchment_MT_on_map(outcome_map, which_map=1)
+    mt_outlines_2, outcome_map = draw_catchment_MT_on_map(outcome_map, which_map=2)
 
     # # LSOA outlines:
     # lsoa_outlines, outcome_map = draw_LSOA_outlines_on_map(outcome_map)
@@ -1059,14 +1092,29 @@ def draw_map_tiff(df_hospitals, layer_name='Outcomes', alpha=0.6):
     folium.LayerControl(
         collapsed=False, 
         name='Background image'
-        ).add_to(outcome_map)
+        ).add_to(outcome_map.m1)
+    folium.LayerControl(
+        collapsed=False, 
+        name='Background image'
+        ).add_to(outcome_map.m2)
+    
+
+
     # Anything specified in further GroupedLayerControl boxes
     # will be removed from the previous control and appear in here:
     folium.plugins.GroupedLayerControl(
         {'Shapes': polygons},
         collapsed=False,
         exclusive_groups=False, # True for radio, false for checkbox
-    ).add_to(outcome_map)
+    ).add_to(outcome_map.m1)
+
+
+    folium.plugins.GroupedLayerControl(
+        {'Shapes': [ivt_outlines_2, mt_outlines_2]},
+        collapsed=False,
+        exclusive_groups=False, # True for radio, false for checkbox
+    ).add_to(outcome_map.m2)
+
 
     # Set z-order of the elements:
     # (can add multiple things in here but the lag increases)
@@ -1078,10 +1126,10 @@ def draw_map_tiff(df_hospitals, layer_name='Outcomes', alpha=0.6):
     # For single map:
     # outcome_map.to_streamlit()
     # For DualMap:
-    # st.components.v1.html(outcome_map._repr_html_(), height=1200, width=800)
+    st.components.v1.html(outcome_map._repr_html_(), height=1200, width=800)
     # st.write(outcome_map)
     # outcome_map.show()
-    outcome_map.save('html_dual_test.html')
+    # outcome_map.save('html_dual_test.html')
 
 
 
