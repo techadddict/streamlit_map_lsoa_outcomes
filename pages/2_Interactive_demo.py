@@ -809,11 +809,23 @@ def draw_map_leafmap(lat_hospital, long_hospital, geojson_list, region_list, df_
 
 
 @st.cache_data
-def load_map(path_to_html):
+def load_map_added_utility(path_to_html):
     with open(path_to_html, 'r') as f:
         html_data = f.read()
     return html_data
 
+
+@st.cache_data
+def load_map_mean_shift(path_to_html):
+    with open(path_to_html, 'r') as f:
+        html_data = f.read()
+    return html_data
+
+@st.cache_data
+def load_map_mrs_leq2(path_to_html):
+    with open(path_to_html, 'r') as f:
+        html_data = f.read()
+    return html_data
 
 
 from branca.element import MacroElement
@@ -1107,7 +1119,15 @@ def draw_map_tiff(df_hospitals, cog_files, layer_names, outcome_cbar_dict, diff_
 
 
 @st.cache_resource
-def draw_map(html_data):
+def draw_map_added_utility(html_data):
+    return st.components.v1.html(html_data, height=600)
+
+@st.cache_resource
+def draw_map_mean_shift(html_data):
+    return st.components.v1.html(html_data, height=600)
+
+@st.cache_resource
+def draw_map_mrs_leq2(html_data):
     return st.components.v1.html(html_data, height=600)
     
 
@@ -1137,10 +1157,15 @@ outcome_type_dict = {
 outcome_type = outcome_type_dict[outcome_type_str]
 
 path_to_html = f'./html_dualmap_{outcome_type}.html'
-# path_to_html = './html_dual_test.html' 
+# path_to_html = './html_dual_test.html'
 # # path_to_html = 'https://github.com/samuel-book/streamlit_map_lsoa_outcomes/blob/main/html_test.html'
 
-html_data = load_map(path_to_html)
+if outcome_type == 'added~utility':
+    html_data = load_map_added_utility(path_to_html)
+elif outcome_type == 'mean~shift':
+    html_data = load_map_mean_shift(path_to_html)
+elif outcome_type == 'mrs<=2':
+    html_data = load_map_mrs_leq2(path_to_html)
 
 
 # time1 = datetime.now()
@@ -1167,7 +1192,16 @@ with cols[0]:
 with cols[1]:
     st.markdown('## LVO')
 
-draw_map(html_data)
+
+if outcome_type == 'added~utility':
+    draw_map_added_utility(html_data)
+elif outcome_type == 'mean~shift':
+    draw_map_mean_shift(html_data)
+elif outcome_type == 'mrs<=2':
+    draw_map_mrs_leq2(html_data)
+
+
+
 # # st.components.v1.iframe('4_Project', height=600)
 
 # time2 = datetime.now()
