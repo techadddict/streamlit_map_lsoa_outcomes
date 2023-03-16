@@ -859,7 +859,7 @@ class BindColormap(MacroElement):
 
 
 
-def draw_map_tiff(df_hospitals, layer_name='Outcomes', alpha=0.6):
+def draw_map_tiff(df_hospitals, cog_files, layer_names, outcome_cbar_dict, diff_cbar_dict, alpha=0.6, savename='html_test.html'):
 
 
     # Create a map base without tiles:
@@ -899,30 +899,6 @@ def draw_map_tiff(df_hospitals, layer_name='Outcomes', alpha=0.6):
     # Draw the coloured background images.
     # Set one to be visible on load and the others to appear when
     # selected.
-    tiff_file_strings = [
-        'drip~ship~nlvo~ivt~added~utility',
-        'mothership~nlvo~ivt~added~utility',
-        'mothership~minus~dripship~nlvo~ivt~added~utility',
-        'drip~ship~lvo~mt~added~utility',
-        'mothership~lvo~mt~added~utility',
-        'mothership~minus~dripship~lvo~mt~added~utility',
-    ]
-
-    cog_files = [
-        f'data_maps/LSOA_{s}_cog.tif'
-        for s in tiff_file_strings
-    ]
-
-    layer_names = [
-        # nLVO
-        'Drip and ship', #'Drip and ship IVT nLVO added utility',
-        'Mothership', #'Mothership IVT/nLVO added utility',
-        'Advantage of Mothership', #nLVO advantage of Mothership (added utility)',
-        # LVO
-        'Drip and ship', #'Drip and ship IVT/MT LVO added utility',
-        'Mothership', #'Mothership MT IVT/LVO added utility',
-        'Advantage of Mothership', #'LVO advantage of Mothership (added utility)'
-    ]
 
     tiff_layers = []
     for t, c_file in enumerate(cog_files):
@@ -941,23 +917,13 @@ def draw_map_tiff(df_hospitals, layer_name='Outcomes', alpha=0.6):
 
 
 
-    outcome_min = 0.0261
-    outcome_max = 0.1759
-    outcome_cmap = 'inferno'
-    outcome_cbar_label = 'Added utility'
-    
-    diff_min = -0.09620000000000009
-    diff_max = 0.09620000000000009
-    diff_cmap = 'bwr_r'
-    diff_cbar_label = 'Advantage of Mothership (added utility)'
-
     colourmaps = []
     for m in [outcome_map.m1, outcome_map.m2]:
         # --- Outcome colourbar ---
         # Use these points as fixed colours with labels:
-        choro_bins = np.linspace(outcome_min, outcome_max, 7)
+        choro_bins = np.linspace(outcome_cbar_dict['min'], outcome_cbar_dict['max'], 7)
         # Get colours as (R, G, B, A) arrays:
-        colours = plt.get_cmap(outcome_cmap)(np.linspace(0, 1, len(choro_bins)))
+        colours = plt.get_cmap(outcome_cbar_dict['cmap'])(np.linspace(0, 1, len(choro_bins)))
         # Update alpha to match the opacity of the background image:
         colours[:, 3] = alpha
         # Convert colours to tuple so that branca understands them:
@@ -965,10 +931,10 @@ def draw_map_tiff(df_hospitals, layer_name='Outcomes', alpha=0.6):
         
         # Drip and ship colour bar:
         colormap_dripship = branca.colormap.LinearColormap(
-            vmin=outcome_min,
-            vmax=outcome_max,
+            vmin=outcome_cbar_dict['min'],
+            vmax=outcome_cbar_dict['max'],
             colors=colours,
-            caption=outcome_cbar_label,
+            caption=outcome_cbar_dict['cbar_label'],
             index=choro_bins
         )
         colourmaps.append(colormap_dripship)
@@ -978,10 +944,10 @@ def draw_map_tiff(df_hospitals, layer_name='Outcomes', alpha=0.6):
 
         # Mothership colour bar:
         colormap_mothership = branca.colormap.LinearColormap(
-            vmin=outcome_min,
-            vmax=outcome_max,
+            vmin=outcome_cbar_dict['min'],
+            vmax=outcome_cbar_dict['max'],
             colors=colours,
-            caption=outcome_cbar_label,
+            caption=outcome_cbar_dict['cbar_label'],
             index=choro_bins
         )
         # outcome_map.add_child(colormap_mothership)
@@ -990,9 +956,9 @@ def draw_map_tiff(df_hospitals, layer_name='Outcomes', alpha=0.6):
 
         # --- Difference colourbar ---
         # Use these points as fixed colours with labels:
-        choro_bins = np.linspace(diff_min, diff_max, 7)
+        choro_bins = np.linspace(diff_cbar_dict['min'], diff_cbar_dict['max'], 7)
         # Get colours as (R, G, B, A) arrays:
-        colours = plt.get_cmap(diff_cmap)(np.linspace(0, 1, len(choro_bins)))
+        colours = plt.get_cmap(diff_cbar_dict['cmap'])(np.linspace(0, 1, len(choro_bins)))
         # Update alpha to match the opacity of the background image:
         colours[:, 3] = alpha
         # Convert colours to tuple so that branca understands them:
@@ -1000,10 +966,10 @@ def draw_map_tiff(df_hospitals, layer_name='Outcomes', alpha=0.6):
 
         # Make a new discrete colour map:
         colormap_diff = branca.colormap.LinearColormap(
-            vmin=diff_min,
-            vmax=diff_max,
+            vmin=diff_cbar_dict['min'],
+            vmax=diff_cbar_dict['max'],
             colors=colours,
-            caption=diff_cbar_label,
+            caption=diff_cbar_dict['cbar_label'],
             index=choro_bins
         )
         # outcome_map.add_child(colormap_diff)
@@ -1025,6 +991,7 @@ def draw_map_tiff(df_hospitals, layer_name='Outcomes', alpha=0.6):
 
             colourmaps[i].add_to(outcome_map.m2)
             BindColormap(tiff_layers[i], colourmaps[i]).add_to(outcome_map.m2)
+
             # st.write(i, 'bottom')
             # colourmaps[i].add_to(outcome_map)
             # BindColormap(tiff_layers[i], colourmaps[i]).add_to(outcome_map)
@@ -1126,10 +1093,10 @@ def draw_map_tiff(df_hospitals, layer_name='Outcomes', alpha=0.6):
     # For single map:
     # outcome_map.to_streamlit()
     # For DualMap:
-    st.components.v1.html(outcome_map._repr_html_(), height=1200, width=800)
+    st.components.v1.html(outcome_map._repr_html_(), height=1200, width=1200)
     # st.write(outcome_map)
     # outcome_map.show()
-    # outcome_map.save('html_dual_test.html')
+    # outcome_map.save(savename)
 
 
 
@@ -1139,57 +1106,76 @@ def draw_map_tiff(df_hospitals, layer_name='Outcomes', alpha=0.6):
 page_setup()
 
 # Title:
-st.markdown('# Folium map test')
+st.markdown('# Outcome maps')
 
 
 startTime = datetime.now()
 
 
-path_to_html = './html_dual_test.html' 
-# path_to_html = 'https://github.com/samuel-book/streamlit_map_lsoa_outcomes/blob/main/html_test.html'
+# Outcome type input:
+outcome_type_str = st.radio(
+    'Select the outcome measure',
+    ['Added utility', 'Mean shift in mRS', 'mRS <= 2']
+)
+# Match the input string to the file name string:
+outcome_type_dict = {
+    'Added utility': 'added~utility',
+    'Mean shift in mRS': 'mean~shift',
+    'mRS <= 2': 'mrs<=2'
+}
+outcome_type = outcome_type_dict[outcome_type_str]
+
+path_to_html = f'./html_dualmap_{outcome_type}.html'
+# path_to_html = './html_dual_test.html' 
+# # path_to_html = 'https://github.com/samuel-book/streamlit_map_lsoa_outcomes/blob/main/html_test.html'
 
 with open(path_to_html, 'r') as f:
     html_data = f.read()
 
 
-time1 = datetime.now()
-st.write('Time to load HTML:', time1 - startTime)
+# time1 = datetime.now()
+# st.write('Time to load HTML:', time1 - startTime)
 
-# raw_html = ('''
-# <html>
-# <head>
-# </head>
-# <body>
-#   <p>
-#   <div style = "text-align: left;">
-#     <embed style="border: none;" src="./html_test.html" dpi="300" width="100%" height="600px" />
-#   </div>
-#   </p>
-# </body>
-# </html>
-# '''
-# )
-# st.markdown(html_data, unsafe_allow_html=True)
+# # raw_html = ('''
+# # <html>
+# # <head>
+# # </head>
+# # <body>
+# #   <p>
+# #   <div style = "text-align: left;">
+# #     <embed style="border: none;" src="./html_test.html" dpi="300" width="100%" height="600px" />
+# #   </div>
+# #   </p>
+# # </body>
+# # </html>
+# # '''
+# # )
+# # st.markdown(html_data, unsafe_allow_html=True)
+cols = st.columns(2)
+with cols[0]:
+    st.markdown('## nLVO')
+with cols[1]:
+    st.markdown('## LVO')
 st.components.v1.html(html_data, height=600)
-# st.components.v1.iframe('4_Project', height=600)
+# # st.components.v1.iframe('4_Project', height=600)
 
-time2 = datetime.now()
-st.write('Time to draw map:', time2 - time1)
-
-
-# with open(path_to_html, 'r') as f:
-#     html_data = f.read()
-
-# time3 = datetime.now()
-# st.write('Time to read HTML:', time3 - time2)
-
-# st.components.v1.html(html_data, height=600)
+# time2 = datetime.now()
+# st.write('Time to draw map:', time2 - time1)
 
 
-# time4 = datetime.now()
-# st.write('Time to draw map:', time4 - time3)
+# # with open(path_to_html, 'r') as f:
+# #     html_data = f.read()
 
-st.write('done')
+# # time3 = datetime.now()
+# # st.write('Time to read HTML:', time3 - time2)
+
+# # st.components.v1.html(html_data, height=600)
+
+
+# # time4 = datetime.now()
+# # st.write('Time to draw map:', time4 - time3)
+
+# st.write('done')
 st.stop()
 
 
@@ -1307,6 +1293,79 @@ geojson_list = []
 # st.write(geojson_ew['features'][0])
 
 
+
+tiff_file_strings = [
+    f'drip~ship~nlvo~ivt~{outcome_type}',
+    f'mothership~nlvo~ivt~{outcome_type}',
+    f'mothership~minus~dripship~nlvo~ivt~{outcome_type}',
+    f'drip~ship~lvo~mt~{outcome_type}',
+    f'mothership~lvo~mt~{outcome_type}',
+    f'mothership~minus~dripship~lvo~mt~{outcome_type}',
+]
+
+cog_files = [
+    f'data_maps/LSOA_{s}_cog.tif'
+    for s in tiff_file_strings
+]
+
+layer_names = [
+    # nLVO
+    'Drip and ship', #'Drip and ship IVT nLVO added utility',
+    'Mothership', #'Mothership IVT/nLVO added utility',
+    'Advantage of Mothership', #nLVO advantage of Mothership (added utility)',
+    # LVO
+    'Drip and ship', #'Drip and ship IVT/MT LVO added utility',
+    'Mothership', #'Mothership MT IVT/LVO added utility',
+    'Advantage of Mothership', #'LVO advantage of Mothership (added utility)'
+]
+
+
+if outcome_type == 'added~utility':
+    outcome_cbar_dict = dict(
+        min = 0.0261,
+        max = 0.1759,
+        cmap = 'inferno',
+        cbar_label = 'Added utility'
+    )
+
+    diff_cbar_dict = dict(
+        min = -0.09620000000000009,
+        max = 0.09620000000000009,
+        cmap = 'bwr_r',
+        cbar_label = 'Advantage of Mothership (added utility)'
+    )
+
+elif outcome_type == 'mean~shift':
+    outcome_cbar_dict = dict(
+        min = -0.89,
+        max = -0.1,
+        cmap = 'inferno_r',
+        cbar_label = 'mRS shift; negative is better'
+    )
+
+    diff_cbar_dict = dict(
+        min = -0.51,
+        max = 0.51,
+        cmap = 'bwr',
+        cbar_label = 'Advantage of Mothership (mRS shift; negative is better)'
+    )
+
+
+elif outcome_type == 'mrs<=2':
+    outcome_cbar_dict = dict(
+        min = 0.29,
+        max = 0.7,
+        cmap = 'inferno',
+        cbar_label = 'mRS <= 2'
+    )
+
+    diff_cbar_dict = dict(
+        min = -0.10000000000000003,
+        max = 0.10000000000000003,
+        cmap = 'bwr_r',
+        cbar_label = 'Advantage of Mothership (mRS <= 2)'
+    )
+
 time4 = datetime.now()
 
 
@@ -1316,7 +1375,11 @@ with st.spinner(text='Drawing map'):
         # myarray_colours,
         # geojson_list,
         df_hospitals,
-        # layer_name=outcome_column
+        cog_files,
+        layer_names,
+        outcome_cbar_dict,
+        diff_cbar_dict,
+        savename=f'html_dualmap_{outcome_type}.html'
         )
 
 
