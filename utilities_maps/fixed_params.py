@@ -8,7 +8,7 @@ def page_setup():
     st.set_page_config(
         page_title='Template project',
         page_icon=':thumbsup:',
-        # layout='wide'
+        layout='wide'
         )
     # n.b. this can be set separately for each separate page if you like.
 
