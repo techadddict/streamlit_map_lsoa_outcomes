@@ -808,6 +808,13 @@ def draw_map_leafmap(lat_hospital, long_hospital, geojson_list, region_list, df_
     # st.stop()
 
 
+@st.cache_data
+def load_map(path_to_html):
+    with open(path_to_html, 'r') as f:
+        html_data = f.read()
+    return html_data
+
+
 
 from branca.element import MacroElement
 
@@ -1099,6 +1106,10 @@ def draw_map_tiff(df_hospitals, cog_files, layer_names, outcome_cbar_dict, diff_
     # outcome_map.save(savename)
 
 
+@st.cache_resource
+def draw_map(html_data):
+    return st.components.v1.html(html_data, height=600)
+    
 
 # ###########################
 # ##### START OF SCRIPT #####
@@ -1129,8 +1140,7 @@ path_to_html = f'./html_dualmap_{outcome_type}.html'
 # path_to_html = './html_dual_test.html' 
 # # path_to_html = 'https://github.com/samuel-book/streamlit_map_lsoa_outcomes/blob/main/html_test.html'
 
-with open(path_to_html, 'r') as f:
-    html_data = f.read()
+html_data = load_map(path_to_html)
 
 
 # time1 = datetime.now()
@@ -1156,7 +1166,8 @@ with cols[0]:
     st.markdown('## nLVO')
 with cols[1]:
     st.markdown('## LVO')
-st.components.v1.html(html_data, height=600)
+
+draw_map(html_data)
 # # st.components.v1.iframe('4_Project', height=600)
 
 # time2 = datetime.now()
