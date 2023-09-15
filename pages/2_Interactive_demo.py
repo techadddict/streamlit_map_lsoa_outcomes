@@ -39,21 +39,21 @@ from utilities_maps.fixed_params import page_setup
 from datetime import datetime
 
 
-def import_geojson(group_hospital):
-    # Choose which geojson to open:
-    geojson_file = 'LSOA_' + group_hospital.replace(' ', '~') + '.geojson'
-    # geojson_file = './old/LSOA_2011.geojson'
-    # geojson_file = 'LSOA_(Dec_2011)_Boundaries_Super_Generalised_Clipped_(BSC)_EW_V3.geojson'
+# def import_geojson(group_hospital):
+#     # Choose which geojson to open:
+#     geojson_file = 'LSOA_' + group_hospital.replace(' ', '~') + '.geojson'
+#     # geojson_file = './old/LSOA_2011.geojson'
+#     # geojson_file = 'LSOA_(Dec_2011)_Boundaries_Super_Generalised_Clipped_(BSC)_EW_V3.geojson'
 
-    # lsoa geojson
-    # with open('./data_maps/lhb_scn_geojson/' + geojson_file) as f:
-    with open('./data_maps/lhb_stp_geojson/' + geojson_file) as f:
-        geojson_ew = json.load(f)
+#     # lsoa geojson
+#     # with open('./data_maps/lhb_scn_geojson/' + geojson_file) as f:
+#     with open('./data_maps/lhb_stp_geojson/' + geojson_file) as f:
+#         geojson_ew = json.load(f)
 
-    ## Copy the LSOA11CD code to features.id within geojson
-    for i in geojson_ew['features']:
-        i['id'] = i['properties']['LSOA11NMW']
-    return geojson_ew
+#     ## Copy the LSOA11CD code to features.id within geojson
+#     for i in geojson_ew['features']:
+#         i['id'] = i['properties']['LSOA11NMW']
+#     return geojson_ew
 
 
 
@@ -901,18 +901,18 @@ def draw_map_tiff(df_hospitals, cog_files, layer_names, outcome_cbar_dict, diff_
         # layout='vertical'
         )
 
-    # Now add the tiles and remove the option to toggle them on and off.
-    # This means that no matter what layers we add later,
-    # the tiles will never be removed.
-    # https://stackoverflow.com/questions/61345801/
-    # featuregroup-layer-control-in-folium-only-one-active-layer
-    # New feature group:
-    base_map = folium.FeatureGroup(
-        name='Base map', overlay=True, control=False)
-    # Place the tiles in the feature group:
-    folium.TileLayer(tiles='cartodbpositron').add_to(base_map)
-    # Draw on the map:
-    base_map.add_to(outcome_map)
+    # # Now add the tiles and remove the option to toggle them on and off.
+    # # This means that no matter what layers we add later,
+    # # the tiles will never be removed.
+    # # https://stackoverflow.com/questions/61345801/
+    # # featuregroup-layer-control-in-folium-only-one-active-layer
+    # # New feature group:
+    # base_map = folium.FeatureGroup(
+    #     name='Base map', overlay=True, control=False)
+    # # Place the tiles in the feature group:
+    # folium.TileLayer(tiles='cartodbpositron').add_to(base_map)
+    # # Draw on the map:
+    # base_map.add_to(outcome_map)
 
 
     # Draw the coloured background images.
@@ -1104,8 +1104,8 @@ def draw_map_tiff(df_hospitals, cog_files, layer_names, outcome_cbar_dict, diff_
 
     # Set z-order of the elements:
     # (can add multiple things in here but the lag increases)
-    outcome_map.keep_in_front(fg_markers)
-
+    outcome_map.m1.keep_in_front(fg_markers)
+    outcome_map.m2.keep_in_front(fg_markers)
 
 
     # Generate map
@@ -1146,7 +1146,8 @@ startTime = datetime.now()
 # Outcome type input:
 outcome_type_str = st.radio(
     'Select the outcome measure',
-    ['Added utility', 'Mean shift in mRS', 'mRS <= 2']
+    ['Added utility', 'Mean shift in mRS', 'mRS <= 2'],
+    horizontal=True
 )
 # Match the input string to the file name string:
 outcome_type_dict = {
@@ -1156,72 +1157,380 @@ outcome_type_dict = {
 }
 outcome_type = outcome_type_dict[outcome_type_str]
 
+
+
+## Load data files
+# Hospital info
+df_hospitals = pd.read_csv("./data_maps/stroke_hospitals_22_reduced.csv")
+
+df_outcomes = pd.read_csv("./data_maps/lsoa_base.csv")
+
+df_outcomes = df_outcomes.round(3)
+# df_outcomes['drip_ship_lvo_mt_added_utility'] = round(df_outcomes['drip_ship_lvo_mt_added_utility'], 3)
+# df_outcomes['mothership_lvo_mt_added_utility'] = round(df_outcomes['mothership_lvo_mt_added_utility'], 3)
+df_outcomes['diff_lvo_mt_added_utility'] = (
+    df_outcomes['mothership_lvo_mt_added_utility'] -
+    df_outcomes['drip_ship_lvo_mt_added_utility']
+)
+df_outcomes['diff_lvo_ivt_added_utility'] = (
+    df_outcomes['mothership_lvo_ivt_added_utility'] -
+    df_outcomes['drip_ship_lvo_ivt_added_utility']
+)
+df_outcomes['diff_nlvo_ivt_added_utility'] = (
+    df_outcomes['mothership_nlvo_ivt_added_utility'] -
+    df_outcomes['drip_ship_nlvo_ivt_added_utility']
+)
+
+# geojson_ew = import_geojson('LSOA_outcomes.geojson')
+# geojson_ew = import_geojson('LSOA_(Dec_2011)_Boundaries_Super_Generalised_Clipped_(BSC)_EW_V3_reduced4.geojson')
+
+geojson_ew = import_geojson('LSOA_(Dec_2011)_Boundaries_Super_Generalised_Clipped_(BSC)_EW_V3_reduced4_simplified.geojson')
+
+# Sort out any problem polygons with coordinates in wrong order:
+from geojson_rewind import rewind
+geojson_ew = rewind(geojson_ew, rfc7946=False)
+
+# geojson_ew = import_geojson('LSOA_(Dec_2011)_Boundaries_Super_Generalised_Clipped_(BSC)_EW_V3_reduced4(3).geojson')
+# geojson_ew = import_geojson('LSOA_(Dec_2011)_Boundaries_Super_Generalised_Clipped_(BSC)_EW_V3_mapshaper.geojson')
+# geojson_ew = import_geojson('/lhb_scn_geojson/LSOA_South~West.geojson')
+
+
+for feature in geojson_ew['features']:
+    # if 'Wrexham' in feature['properties']['LSOA11NM']:
+    #     st.write(feature)
+
+    if feature['type'] != 'Feature':
+        st.write(feature)
+    try:
+        a = feature['geometry']
+        if a['type'] not in ['Polygon', 'MultiPolygon']:
+            st.write(feature)
+        if len(a['coordinates']) < 1:
+            st.write(feature)
+    except:
+        st.write('PROBLEM: ', feature)
+
+
+import plotly.express as px
+
+
+# Colour bar limits:
+added_utility_cols = [
+    'drip_ship_nlvo_ivt_added_utility',
+    'mothership_nlvo_ivt_added_utility',
+    'drip_ship_lvo_ivt_added_utility',
+    'mothership_lvo_ivt_added_utility',
+    'drip_ship_lvo_mt_added_utility',
+    'mothership_lvo_mt_added_utility',
+]
+diff_added_utility_cols = [
+    'diff_nlvo_ivt_added_utility',
+    'diff_lvo_ivt_added_utility',
+    'diff_lvo_mt_added_utility',
+]
+vmin_added_utility = df_outcomes[added_utility_cols].min().min()
+vmax_added_utility = df_outcomes[added_utility_cols].max().max()
+vlim_diff_added_utility = df_outcomes[diff_added_utility_cols].abs().max().max()
+vmin_diff_added_utility = -vlim_diff_added_utility
+vmax_diff_added_utility = +vlim_diff_added_utility
+
+
+# Temporary before function
+outcome_vmin = vmin_added_utility
+outcome_vmax = vmax_added_utility
+diff_vmin = vmin_diff_added_utility
+diff_vmax = vmax_diff_added_utility
+
+
+import plotly.graph_objs as go
+
+def plotly_big_map():
+    fig = go.Figure()
+    
+    fig.update_layout(
+        width=1200,
+        height=1200
+        )
+    
+    fig.add_trace(go.Choropleth(
+        geojson=geojson_ew,
+        locations=df_outcomes['lsoa'],
+        z=df_outcomes['drip_ship_lvo_mt_added_utility'],
+        featureidkey='properties.LSOA11NM',
+        coloraxis="coloraxis",
+        # colorscale='Inferno',
+        # autocolorscale=False
+    ))
+    
+    fig.update_layout(
+        geo = dict(
+            scope='world',
+            projection=go.layout.geo.Projection(type = 'airy'),
+            fitbounds='locations',
+            visible=False
+    ))
+    # Remove LSOA borders:
+    fig.update_traces(marker_line_width=0, selector=dict(type='choropleth'))
+
+    # The initial colour map setting can take very many options,
+    # but the later update with the drop-down menu only has a small list
+    # of about ten coded in. You can't even provide a list of colours instead.
+    # The available options are:
+    # Blackbody, Bluered, Blues, Cividis, Earth, Electric, Greens, Greys,
+    # Hot, Jet, Picnic, Portland, Rainbow, RdBu, Reds, Viridis, YlGnBu, YlOrRd.
+    # As listed in: https://plotly.com/python-api-reference/generated/plotly.graph_objects.Choropleth.html
+
+    fig.update_layout(
+        coloraxis_colorscale='Electric',
+        coloraxis_colorbar_title_text='Added utility',
+        coloraxis_cmin=outcome_vmin,
+        coloraxis_cmax=outcome_vmax,
+        )
+
+    fig.update_layout(title_text='<b>Drip and Ship</b>', title_x=0.5)
+
+    fig.update_layout(
+        updatemenus = [go.layout.Updatemenu(
+            x = 0, xanchor = 'right', y = 1.15, type = "dropdown", 
+            pad = {'t': 5, 'r': 20, 'b': 0, 'l': 30}, # around all buttons (not indiv buttons)
+            buttons = list([
+                dict(
+                    args = [{'z': [df_outcomes['drip_ship_lvo_mt_added_utility']],
+                            },
+                            {
+                            'coloraxis.colorscale':'Electric',
+                            'coloraxis.reversescale':False,
+                            'coloraxis.cmin':outcome_vmin,
+                            'coloraxis.cmax':outcome_vmax,
+                            'title.text':'<b>Drip and Ship</b>'
+                            }],
+                    label = 'Drip & Ship',
+                    method = 'update'
+                ),
+                dict(
+                    args = [{'z': [df_outcomes['mothership_lvo_mt_added_utility']],
+                            },
+                            {
+                            'coloraxis.colorscale':'Electric',
+                            'coloraxis.reversescale':False,
+                            'coloraxis.cmin':outcome_vmin,
+                            'coloraxis.cmax':outcome_vmax,
+                            'title.text':'<b>Mothership</b>'
+                            }],
+                    label = 'Mothership',
+                    method = 'update'
+                ),
+                dict(
+                    args = [{'z': [df_outcomes['diff_lvo_mt_added_utility']],
+                            },
+                            {'coloraxis.colorscale':'RdBu',
+                            'coloraxis.reversescale':True,
+                            'coloraxis.cmin':diff_vmin,
+                            'coloraxis.cmax':diff_vmax,
+                            'title.text':'<b>Difference</b>'
+                            }],
+                    label = 'Diff',
+                    method = 'update'
+                )
+                ])
+        )]
+    )
+    fig.update_traces(hovertemplate='%{z}<extra>%{location}</extra>')
+
+    fig.write_html('data_maps/plotly_test.html')
+
+    st.plotly_chart(fig)
+
+
+def plotly_two_subplots():
+    from plotly.subplots import make_subplots
+    fig = make_subplots(
+        rows=1, cols=2, subplot_titles=['a', 'b'],
+        specs=[[{"type": "choropleth"}, {"type": "choropleth"}]]
+    )
+
+    fig.update_layout(
+        width=1200,
+        height=1200
+        )
+    fig.add_trace(go.Choropleth(
+        geojson=geojson_ew,
+        locations=df_outcomes['lsoa'],
+        z=df_outcomes['drip_ship_lvo_mt_added_utility'],
+        featureidkey='properties.LSOA11NM',
+        coloraxis="coloraxis",
+        # colorscale='Inferno',
+        # autocolorscale=False
+    ), row=1, col=1
+    )
+
+    fig.add_trace(go.Choropleth(
+        geojson=geojson_ew,
+        locations=df_outcomes['lsoa'],
+        z=df_outcomes['mothership_lvo_mt_added_utility'],
+        featureidkey='properties.LSOA11NM',
+        coloraxis="coloraxis",
+        # colorscale='Inferno',
+        # autocolorscale=False
+    ), row=1, col=2
+    )
+
+    fig.update_layout(
+        geo = dict(
+            scope='world',
+            projection=go.layout.geo.Projection(type = 'airy'),
+            fitbounds='locations',
+            visible=False, domain_row=1, domain_column=1))
+    fig.update_layout(
+        geo = dict(
+            scope='world',
+            projection=go.layout.geo.Projection(type = 'airy'),
+            fitbounds='locations',
+            visible=False, domain_row=1, domain_column=2))
+    # Remove LSOA borders:
+    fig.update_traces(marker_line_width=0, selector=dict(type='choropleth'))
+
+    # The initial colour map setting can take very many options,
+    # but the later update with the drop-down menu only has a small list
+    # of about ten coded in. You can't even provide a list of colours instead.
+    # The available options are:
+    # Blackbody, Bluered, Blues, Cividis, Earth, Electric, Greens, Greys,
+    # Hot, Jet, Picnic, Portland, Rainbow, RdBu, Reds, Viridis, YlGnBu, YlOrRd.
+    # As listed in: https://plotly.com/python-api-reference/generated/plotly.graph_objects.Choropleth.html
+
+    fig.update_layout(
+        coloraxis_colorscale='Electric',
+        coloraxis_colorbar_title_text='Added utility',
+        coloraxis_cmin=outcome_vmin,
+        coloraxis_cmax=outcome_vmax,
+        )
+
+    fig.update_layout(title_text='<b>Drip and Ship</b>', title_x=0.5)
+    fig.update_layout(
+        updatemenus = [go.layout.Updatemenu(
+            x = 0, xanchor = 'right', y = 1.15, type = "dropdown", 
+            pad = {'t': 5, 'r': 20, 'b': 0, 'l': 30}, # around all buttons (not indiv buttons)
+            buttons = list([
+                dict(
+                    args = [{'z': [df_outcomes['drip_ship_lvo_mt_added_utility']],
+                            },
+                            {
+                            'coloraxis.colorscale':'Electric',
+                            'coloraxis.reversescale':False,
+                            'coloraxis.cmin':outcome_vmin,
+                            'coloraxis.cmax':outcome_vmax,
+                            'title.text':'<b>Drip and Ship</b>'
+                            }],
+                    label = 'Drip & Ship',
+                    method = 'update'
+                ),
+                dict(
+                    args = [{'z': [df_outcomes['mothership_lvo_mt_added_utility']],
+                             'z1': [df_outcomes['mothership_nlvo_ivt_added_utility']],
+                            },
+                            {
+                            'coloraxis.colorscale':'Electric',
+                            'coloraxis.reversescale':False,
+                            'coloraxis.cmin':outcome_vmin,
+                            'coloraxis.cmax':outcome_vmax,
+                            'title.text':'<b>Mothership</b>'
+                            }],
+                    label = 'Mothership',
+                    method = 'update'
+                ),
+                dict(
+                    args = [{'z': [df_outcomes['diff_lvo_mt_added_utility']],
+                            },
+                            {'coloraxis.colorscale':'RdBu',
+                            'coloraxis.reversescale':True,
+                            'coloraxis.cmin':diff_vmin,
+                            'coloraxis.cmax':diff_vmax,
+                            'title.text':'<b>Difference</b>'
+                            }],
+                    label = 'Diff',
+                    method = 'update'
+                )
+                ])
+        )]
+    )
+    fig.update_traces(hovertemplate='%{z}<extra>%{location}</extra>')
+
+    fig.write_html('data_maps/plotly_dual_test.html')
+
+    st.plotly_chart(fig)
+
+
+plotly_big_map()
+# plotly_two_subplots()
+
+st.stop()
+
 path_to_html = f'./html_dualmap_{outcome_type}.html'
 # path_to_html = './html_dual_test.html'
 # # path_to_html = 'https://github.com/samuel-book/streamlit_map_lsoa_outcomes/blob/main/html_test.html'
 
-if outcome_type == 'added~utility':
-    html_data = load_map_added_utility(path_to_html)
-elif outcome_type == 'mean~shift':
-    html_data = load_map_mean_shift(path_to_html)
-elif outcome_type == 'mrs<=2':
-    html_data = load_map_mrs_leq2(path_to_html)
+# if outcome_type == 'added~utility':
+#     html_data = load_map_added_utility(path_to_html)
+# elif outcome_type == 'mean~shift':
+#     html_data = load_map_mean_shift(path_to_html)
+# elif outcome_type == 'mrs<=2':
+#     html_data = load_map_mrs_leq2(path_to_html)
 
 
-# time1 = datetime.now()
-# st.write('Time to load HTML:', time1 - startTime)
+# # time1 = datetime.now()
+# # st.write('Time to load HTML:', time1 - startTime)
 
-# # raw_html = ('''
-# # <html>
-# # <head>
-# # </head>
-# # <body>
-# #   <p>
-# #   <div style = "text-align: left;">
-# #     <embed style="border: none;" src="./html_test.html" dpi="300" width="100%" height="600px" />
-# #   </div>
-# #   </p>
-# # </body>
-# # </html>
-# # '''
-# # )
-# # st.markdown(html_data, unsafe_allow_html=True)
-cols = st.columns(2)
-with cols[0]:
-    st.markdown('## nLVO')
-with cols[1]:
-    st.markdown('## LVO')
-
-
-if outcome_type == 'added~utility':
-    draw_map_added_utility(html_data)
-elif outcome_type == 'mean~shift':
-    draw_map_mean_shift(html_data)
-elif outcome_type == 'mrs<=2':
-    draw_map_mrs_leq2(html_data)
+# # # raw_html = ('''
+# # # <html>
+# # # <head>
+# # # </head>
+# # # <body>
+# # #   <p>
+# # #   <div style = "text-align: left;">
+# # #     <embed style="border: none;" src="./html_test.html" dpi="300" width="100%" height="600px" />
+# # #   </div>
+# # #   </p>
+# # # </body>
+# # # </html>
+# # # '''
+# # # )
+# # # st.markdown(html_data, unsafe_allow_html=True)
+# cols = st.columns(2)
+# with cols[0]:
+#     st.markdown('## nLVO')
+# with cols[1]:
+#     st.markdown('## LVO')
 
 
-
-# # st.components.v1.iframe('4_Project', height=600)
-
-# time2 = datetime.now()
-# st.write('Time to draw map:', time2 - time1)
-
-
-# # with open(path_to_html, 'r') as f:
-# #     html_data = f.read()
-
-# # time3 = datetime.now()
-# # st.write('Time to read HTML:', time3 - time2)
-
-# # st.components.v1.html(html_data, height=600)
+# if outcome_type == 'added~utility':
+#     draw_map_added_utility(html_data)
+# elif outcome_type == 'mean~shift':
+#     draw_map_mean_shift(html_data)
+# elif outcome_type == 'mrs<=2':
+#     draw_map_mrs_leq2(html_data)
 
 
-# # time4 = datetime.now()
-# # st.write('Time to draw map:', time4 - time3)
 
-# st.write('done')
-st.stop()
+# # # st.components.v1.iframe('4_Project', height=600)
+
+# # time2 = datetime.now()
+# # st.write('Time to draw map:', time2 - time1)
+
+
+# # # with open(path_to_html, 'r') as f:
+# # #     html_data = f.read()
+
+# # # time3 = datetime.now()
+# # # st.write('Time to read HTML:', time3 - time2)
+
+# # # st.components.v1.html(html_data, height=600)
+
+
+# # # time4 = datetime.now()
+# # # st.write('Time to draw map:', time4 - time3)
+
+# # st.write('done')
+# st.stop()
 
 
 
