@@ -235,7 +235,7 @@ def plotly_big_map(gdf, column_colour, column_geometry, v_max=None, v_min=None):
     # Has to be this CRS to prevent Picasso drawing:
     gdf = gdf.to_crs(pyproj.CRS.from_epsg(4326))
 
-    n_colours = 2
+    n_colours = 5
 
     # Make a new column for the colours.
     bands = np.linspace(v_min, v_max, n_colours)
@@ -245,32 +245,39 @@ def plotly_big_map(gdf, column_colour, column_geometry, v_max=None, v_min=None):
 
     inds = np.digitize(gdf['outcome'], bands)
     mids = midpoints[inds]
+    # Set NaN to invisible:
+    mids[pd.isna(gdf['outcome'])] = np.NaN
     gdf['inds'] = inds
     gdf['mids'] = mids
 
-    # Get colour values:
-    import matplotlib.pyplot as plt
-    cmap = plt.get_cmap()
-    cbands = np.linspace(0.0, 1.0, len(bands)+2)
-    colours = cmap(cbands)
-    # Convert from (0.0 to 1.0) to (0 to 255):
-    colour_list = (colours * 255.0).astype(int)
-    # Convert tuples to strings:
+    # Dissolve by shared outcome value:
+    gdf = gdf.dissolve(by='mids')
+    gdf = gdf.reset_index()
+
+
+    # # Get colour values:
+    # import matplotlib.pyplot as plt
+    # cmap = plt.get_cmap()
+    # cbands = np.linspace(0.0, 1.0, len(bands)+2)
+    # colours = cmap(cbands)
+    # # Convert from (0.0 to 1.0) to (0 to 255):
+    # colour_list = (colours * 255.0).astype(int)
+    # # Convert tuples to strings:
+    # # colour_list = np.array([
+    # #     '#%02x%02x%02x%02x' % tuple(c) for c in colour_list])
     # colour_list = np.array([
-    #     '#%02x%02x%02x%02x' % tuple(c) for c in colour_list])
-    colour_list = np.array([
-        f'rgba{tuple(c)}' for c in colour_list])
-    colour_list[2] = 'red'
-    # Sample colour list:
-    lsoa_colours = colour_list[inds]
-    # Set NaN to invisible:
-    lsoa_colours[pd.isna(gdf['outcome'])] = '#00000000'
-    gdf['colour'] = lsoa_colours
+    #     f'rgba{tuple(c)}' for c in colour_list])
+    # colour_list[2] = 'red'
+    # # Sample colour list:
+    # lsoa_colours = colour_list[inds]
+    # # Set NaN to invisible:
+    # lsoa_colours[pd.isna(gdf['outcome'])] = '#00000000'
+    # gdf['colour'] = lsoa_colours
 
-    colour_map = [[float(c), colour_list[i]] for i, c in enumerate(cbands)]
+    # colour_map = [[float(c), colour_list[i]] for i, c in enumerate(cbands)]
 
-    st.write(colour_map)
-    # st.write(gdf.crs)
+    # st.write(colour_map)
+    # # st.write(gdf.crs)
 
     fig = go.Figure()
 
@@ -283,7 +290,7 @@ def plotly_big_map(gdf, column_colour, column_geometry, v_max=None, v_min=None):
         # gdf,
         geojson=gdf.geometry.__geo_interface__,
         locations=gdf.index,
-        z=gdf.mids.astype(str),
+        z=gdf.mids,  #.astype(str),
         # colorscale=colour_map,  # gdf.inds,  # pd.cut(gdf.outcome, bins=np.arange(v_min, v_max+0.11, 0.1)).astype(str),
         # featureidkey='properties.LSOA11NM',
         coloraxis="coloraxis",
