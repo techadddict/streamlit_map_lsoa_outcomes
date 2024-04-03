@@ -243,30 +243,40 @@ def plotly_big_map(gdf, column_colour, column_geometry, v_max=None, v_min=None):
     bands_to_plot = np.array([bands[0] - gap, *list(bands)])#, bands[-1] + gap])
     midpoints = bands_to_plot - 0.5 * gap
 
+    band_str = [f'v <= {v_min:.3f}']
+    for i, band in enumerate(bands[:-1]):
+        b = f'{band:.3f} <= v < {bands[i+1]:.3f}'
+        band_str.append(b)
+    band_str.append(f'{v_max:.3f} < v')
+    band_str = np.array(band_str)
+    st.write(band_str)
+
     inds = np.digitize(gdf['outcome'], bands)
     mids = midpoints[inds]
+    labels = band_str[inds]
     # Set NaN to invisible:
     mids[pd.isna(gdf['outcome'])] = np.NaN
     gdf['inds'] = inds
     gdf['mids'] = mids
+    gdf['labels'] = labels
 
     # Dissolve by shared outcome value:
     gdf = gdf.dissolve(by='mids')
     gdf = gdf.reset_index()
 
 
-    # # Get colour values:
-    # import matplotlib.pyplot as plt
-    # cmap = plt.get_cmap()
-    # cbands = np.linspace(0.0, 1.0, len(bands)+2)
-    # colours = cmap(cbands)
+    # Get colour values:
+    import matplotlib.pyplot as plt
+    cmap = plt.get_cmap()
+    cbands = np.linspace(0.0, 1.0, len(band_str))
+    colour_list = cmap(cbands)
     # # Convert from (0.0 to 1.0) to (0 to 255):
-    # colour_list = (colours * 255.0).astype(int)
+    # colour_list = (colour_list * 255.0).astype(int)
     # # Convert tuples to strings:
-    # # colour_list = np.array([
-    # #     '#%02x%02x%02x%02x' % tuple(c) for c in colour_list])
     # colour_list = np.array([
-    #     f'rgba{tuple(c)}' for c in colour_list])
+    #     '#%02x%02x%02x%02x' % tuple(c) for c in colour_list])
+    colour_list = np.array([
+        f'rgba{tuple(c)}' for c in colour_list])
     # colour_list[2] = 'red'
     # # Sample colour list:
     # lsoa_colours = colour_list[inds]
@@ -275,28 +285,53 @@ def plotly_big_map(gdf, column_colour, column_geometry, v_max=None, v_min=None):
     # gdf['colour'] = lsoa_colours
 
     # colour_map = [[float(c), colour_list[i]] for i, c in enumerate(cbands)]
+    # colour_map = [[float(c), colour_list[i]] for i, c in enumerate(midpoints)]
+    colour_map = [(c, colour_list[i]) for i, c in enumerate(band_str)]
 
-    # st.write(colour_map)
+    colour_list[2] = 'red'
+    colour_map = dict(zip(band_str, colour_list))
+
+    st.write(colour_map)
     # # st.write(gdf.crs)
 
     fig = go.Figure()
+
+
+    import plotly.express as px
+    fig = px.choropleth(
+        gdf,
+        locations=gdf.index,
+        geojson=gdf.geometry.__geo_interface__,
+        color=gdf['labels'],
+        color_discrete_map=colour_map
+        )
 
     fig.update_layout(
         width=1200,
         height=1200
         )
 
-    fig.add_trace(go.Choropleth(
-        # gdf,
-        geojson=gdf.geometry.__geo_interface__,
-        locations=gdf.index,
-        z=gdf.mids,  #.astype(str),
-        # colorscale=colour_map,  # gdf.inds,  # pd.cut(gdf.outcome, bins=np.arange(v_min, v_max+0.11, 0.1)).astype(str),
-        # featureidkey='properties.LSOA11NM',
-        coloraxis="coloraxis",
-        # colorscale='Inferno',
-        # autocolorscale=False
-    ))
+    # fig.add_trace(
+    #     go.Choropleth(
+    #         geojson=gdf.geometry.__geo_interface__,
+    #         locations=gdf.index,
+    #         z=gdf['mids'].astype(str),
+    #         coloraxis='coloraxis',
+    #     )
+    # ).update_geos(fitbounds="locations", visible=False).update_layout(
+    #     coloraxis={"colorscale": colour_map})
+
+    # fig.add_trace(go.Choropleth(
+    #     # gdf,
+    #     geojson=gdf.geometry.__geo_interface__,
+    #     locations=gdf.index,
+    #     z=gdf.mids.astype(str),
+    #     colorscale=colour_map,  # gdf.inds,  # pd.cut(gdf.outcome, bins=np.arange(v_min, v_max+0.11, 0.1)).astype(str),
+    #     # featureidkey='properties.LSOA11NM',
+    #     coloraxis="coloraxis",
+    #     # colorscale='Inferno',
+    #     autocolorscale=False
+    # ))
 
     fig.update_layout(
         geo=dict(
