@@ -220,9 +220,9 @@ def plotly_big_map(
         gdf,
         column_colour,
         column_geometry,
-        v_bands,
-        v_bands_str,
-        colour_map
+        # v_bands,
+        # v_bands_str,
+        # colour_map
         ):
     gdf = gdf.copy()
     crs = gdf.crs
@@ -244,37 +244,17 @@ def plotly_big_map(
     # Has to be this CRS to prevent Picasso drawing:
     gdf = gdf.to_crs(pyproj.CRS.from_epsg(4326))
 
-    # Group by outcome band.
-    # Only group by non-NaN values:
-    mask = ~pd.isna(gdf['outcome'])
-    inds = np.digitize(gdf.loc[mask, 'outcome'], v_bands)
-    # Store inds for sorting the resulting gdf:
-    gdf.loc[mask, 'inds'] = inds
-    gdf.loc[~mask, 'inds'] = np.NaN
-    labels = v_bands_str[inds]
-    # Flag NaN values:
-    gdf.loc[mask, 'labels'] = labels
-    gdf.loc[~mask, 'labels'] = 'rubbish'
-    # Dissolve by shared outcome value:
-    gdf = gdf.dissolve(by='labels')
-    gdf = gdf.reset_index()
-    # Remove the NaN polygon:
-    gdf = gdf[gdf['labels'] != 'rubbish']
-
-    # Sort the dataframe for the sake of the legend order:
-    gdf = gdf.sort_values(by='inds')
-
     # Begin plotting.
     fig = go.Figure()
 
-    import plotly.express as px
-    fig = px.choropleth(
-        gdf,
-        locations=gdf.index,
-        geojson=gdf.geometry.__geo_interface__,
-        color=gdf['labels'],
-        color_discrete_map=colour_map
-        )
+    # import plotly.express as px
+    # fig = px.choropleth(
+    #     gdf,
+    #     locations=gdf.index,
+    #     geojson=gdf.geometry.__geo_interface__,
+    #     color=gdf['outcome'],
+    #     # color_discrete_map=colour_map
+    #     )
 
     fig.update_layout(
         width=1200,
@@ -291,17 +271,17 @@ def plotly_big_map(
     # ).update_geos(fitbounds="locations", visible=False).update_layout(
     #     coloraxis={"colorscale": colour_map})
 
-    # fig.add_trace(go.Choropleth(
-    #     # gdf,
-    #     geojson=gdf.geometry.__geo_interface__,
-    #     locations=gdf.index,
-    #     z=gdf.mids.astype(str),
-    #     colorscale=colour_map,  # gdf.inds,  # pd.cut(gdf.outcome, bins=np.arange(v_min, v_max+0.11, 0.1)).astype(str),
-    #     # featureidkey='properties.LSOA11NM',
-    #     coloraxis="coloraxis",
-    #     # colorscale='Inferno',
-    #     autocolorscale=False
-    # ))
+    fig.add_trace(go.Choropleth(
+        # gdf,
+        geojson=gdf.geometry.__geo_interface__,
+        locations=gdf.index,
+        z=gdf.outcome,
+        # colorscale=colour_map,  # gdf.inds,  # pd.cut(gdf.outcome, bins=np.arange(v_min, v_max+0.11, 0.1)).astype(str),
+        # featureidkey='properties.LSOA11NM',
+        coloraxis="coloraxis",
+        # colorscale='Inferno',
+        autocolorscale=False
+    ))
 
     fig.update_layout(
         geo=dict(
@@ -611,9 +591,9 @@ with st.spinner(text='Drawing map'):
         gdf_boundaries_lsoa,
         column_colour=col_col,
         column_geometry=col_geo,
-        v_bands=v_bands,
-        v_bands_str=v_bands_str,
-        colour_map=colour_map
+        # v_bands=v_bands,
+        # v_bands_str=v_bands_str,
+        # colour_map=colour_map
         )
 time_p_end = datetime.now()
 st.write(f'Time to draw map: {time_p_end - time_p_start}')
