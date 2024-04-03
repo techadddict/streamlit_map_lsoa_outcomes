@@ -5,6 +5,7 @@ import plotly.graph_objs as go
 import os
 import geopandas
 import pyproj  # for crs conversion
+import matplotlib.pyplot as plt  # for colour maps
 
 from datetime import datetime
 
@@ -214,7 +215,14 @@ def find_multiindex_column_names(gdf, **kwargs):
     return cols
 
 
-def plotly_big_map(gdf, column_colour, column_geometry, v_max=None, v_min=None):
+def plotly_big_map(
+        gdf,
+        column_colour,
+        column_geometry,
+        v_bands,
+        v_bands_str,
+        colour_map
+        ):
     gdf = gdf.copy()
     crs = gdf.crs
     gdf = gdf.reset_index()
@@ -235,67 +243,22 @@ def plotly_big_map(gdf, column_colour, column_geometry, v_max=None, v_min=None):
     # Has to be this CRS to prevent Picasso drawing:
     gdf = gdf.to_crs(pyproj.CRS.from_epsg(4326))
 
-    n_colours = 5
-
-    # Make a new column for the colours.
-    bands = np.linspace(v_min, v_max, n_colours)
-    gap = bands[1] - bands[0]
-    bands_to_plot = np.array([bands[0] - gap, *list(bands)])#, bands[-1] + gap])
-    midpoints = bands_to_plot - 0.5 * gap
-
-    band_str = [f'v <= {v_min:.3f}']
-    for i, band in enumerate(bands[:-1]):
-        b = f'{band:.3f} <= v < {bands[i+1]:.3f}'
-        band_str.append(b)
-    band_str.append(f'{v_max:.3f} < v')
-    band_str = np.array(band_str)
-    st.write(band_str)
-
-    inds = np.digitize(gdf['outcome'], bands)
-    mids = midpoints[inds]
-    labels = band_str[inds]
-    # Set NaN to invisible:
-    mids[pd.isna(gdf['outcome'])] = np.NaN
-    gdf['inds'] = inds
-    gdf['mids'] = mids
-    gdf['labels'] = labels
-
+    # Group by outcome band.
+    # Only group by non-NaN values:
+    mask = ~pd.isna(gdf['outcome'])
+    inds = np.digitize(gdf.loc[mask, 'outcome'], v_bands)
+    labels = v_bands_str[inds]
+    # Flag NaN values:
+    gdf.loc[mask, 'labels'] = labels
+    gdf.loc[~mask, 'labels'] = 'rubbish'
     # Dissolve by shared outcome value:
-    gdf = gdf.dissolve(by='mids')
+    gdf = gdf.dissolve(by='labels')
     gdf = gdf.reset_index()
+    # Remove the NaN polygon:
+    gdf = gdf[gdf['labels'] != 'rubbish']
 
-
-    # Get colour values:
-    import matplotlib.pyplot as plt
-    cmap = plt.get_cmap()
-    cbands = np.linspace(0.0, 1.0, len(band_str))
-    colour_list = cmap(cbands)
-    # # Convert from (0.0 to 1.0) to (0 to 255):
-    # colour_list = (colour_list * 255.0).astype(int)
-    # # Convert tuples to strings:
-    # colour_list = np.array([
-    #     '#%02x%02x%02x%02x' % tuple(c) for c in colour_list])
-    colour_list = np.array([
-        f'rgba{tuple(c)}' for c in colour_list])
-    # colour_list[2] = 'red'
-    # # Sample colour list:
-    # lsoa_colours = colour_list[inds]
-    # # Set NaN to invisible:
-    # lsoa_colours[pd.isna(gdf['outcome'])] = '#00000000'
-    # gdf['colour'] = lsoa_colours
-
-    # colour_map = [[float(c), colour_list[i]] for i, c in enumerate(cbands)]
-    # colour_map = [[float(c), colour_list[i]] for i, c in enumerate(midpoints)]
-    colour_map = [(c, colour_list[i]) for i, c in enumerate(band_str)]
-
-    colour_list[2] = 'red'
-    colour_map = dict(zip(band_str, colour_list))
-
-    st.write(colour_map)
-    # # st.write(gdf.crs)
-
+    # Begin plotting.
     fig = go.Figure()
-
 
     import plotly.express as px
     fig = px.choropleth(
@@ -424,6 +387,50 @@ def plotly_big_map(gdf, column_colour, column_geometry, v_max=None, v_min=None):
     st.plotly_chart(fig)
 
 
+def make_colour_map_dict(v_bands_str, cmap_name='viridis'):
+    # Get colour values:
+    cmap = plt.get_cmap(cmap_name)
+    cbands = np.linspace(0.0, 1.0, len(v_bands_str))
+    colour_list = cmap(cbands)
+    # # Convert from (0.0 to 1.0) to (0 to 255):
+    # colour_list = (colour_list * 255.0).astype(int)
+    # # Convert tuples to strings:
+    # colour_list = np.array([
+    #     '#%02x%02x%02x%02x' % tuple(c) for c in colour_list])
+    colour_list = np.array([
+        f'rgba{tuple(c)}' for c in colour_list])
+    # colour_list[2] = 'red'
+    # # Sample colour list:
+    # lsoa_colours = colour_list[inds]
+    # # Set NaN to invisible:
+    # lsoa_colours[pd.isna(gdf['outcome'])] = '#00000000'
+    # gdf['colour'] = lsoa_colours
+
+    # colour_map = [[float(c), colour_list[i]] for i, c in enumerate(cbands)]
+    # colour_map = [[float(c), colour_list[i]] for i, c in enumerate(midpoints)]
+    colour_map = [(c, colour_list[i]) for i, c in enumerate(v_bands_str)]
+
+    # Set over and under colours:
+    colour_list[0] = 'black'
+    colour_list[-1] = 'LimeGreen'
+    colour_map = dict(zip(v_bands_str, colour_list))
+    return colour_map
+
+
+def make_v_bands_str(v_bands):
+    v_min = v_bands[0]
+    v_max = v_bands[-1]
+
+    v_bands_str = [f'v < {v_min:.3f}']
+    for i, band in enumerate(v_bands[:-1]):
+        b = f'{band:.3f} <= v < {v_bands[i+1]:.3f}'
+        v_bands_str.append(b)
+    v_bands_str.append(f'{v_max:.3f} <= v')
+
+    v_bands_str = np.array(v_bands_str)
+    return v_bands_str
+
+
 # ###########################
 # ##### START OF SCRIPT #####
 # ###########################
@@ -461,6 +468,33 @@ scenario_type_dict = {
     'Difference': 'diff_drip-and-ship_minus_mothership'
 }
 scenario_type = scenario_type_dict[scenario_type_str]
+
+# Define shared colour scales:
+cbar_dict = {
+    'utility_shift': {
+        'vmin': 0.0,
+        'vmax': 0.3,
+        'step_size': 0.05
+    },
+    'mRS shift': {
+        'vmin': 0.0,
+        'vmax': 0.3,
+        'step_size': 0.05
+    },
+    'mRS 0-2': {
+        'vmin': 0.0,
+        'vmax': 0.3,
+        'step_size': 0.05
+    },
+}
+v_min = cbar_dict[outcome_type]['vmin']
+v_max = cbar_dict[outcome_type]['vmax']
+step_size = cbar_dict[outcome_type]['step_size']
+
+# Make a new column for the colours.
+v_bands = np.arange(v_min, v_max + step_size, step_size)
+v_bands_str = make_v_bands_str(v_bands)
+colour_map = make_colour_map_dict(v_bands_str)
 
 # Load outcome data
 time_o_start = datetime.now()
@@ -521,7 +555,6 @@ else:
     v_max = np.nanmax(v_values.values)
     v_min = np.nanmin(v_values.values)
 
-
 # Selected column to use for colour values:
 col_col = find_multiindex_column_names(
     gdf_boundaries_lsoa,
@@ -537,8 +570,9 @@ with st.spinner(text='Drawing map'):
         gdf_boundaries_lsoa,
         column_colour=col_col,
         column_geometry=col_geo,
-        v_max=v_max,
-        v_min=v_min
+        v_bands=v_bands,
+        v_bands_str=v_bands_str,
+        colour_map=colour_map
         )
 time_p_end = datetime.now()
 st.write(f'Time to draw map: {time_p_end - time_p_start}')
