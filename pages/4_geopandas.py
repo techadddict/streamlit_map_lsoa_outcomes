@@ -4,7 +4,6 @@ import pandas as pd
 import plotly.graph_objs as go
 import os
 import geopandas
-from geojson_rewind import rewind
 import pyproj  # for crs conversion
 
 from datetime import datetime
@@ -12,6 +11,7 @@ from datetime import datetime
 from utilities_maps.fixed_params import page_setup
 
 
+@st.cache_data
 def import_geojson(region_type: 'str'):
     """
     Import a geojson file as GeoDataFrame.
@@ -214,7 +214,7 @@ def find_multiindex_column_names(gdf, **kwargs):
     return cols
 
 
-def plotly_big_map(gdf, column_colour, column_geometry):
+def plotly_big_map(gdf, column_colour, column_geometry, v_max=None, v_min=None):
     gdf = gdf.copy()
     crs = gdf.crs
     gdf = gdf.reset_index()
@@ -235,6 +235,43 @@ def plotly_big_map(gdf, column_colour, column_geometry):
     # Has to be this CRS to prevent Picasso drawing:
     gdf = gdf.to_crs(pyproj.CRS.from_epsg(4326))
 
+    n_colours = 2
+
+    # Make a new column for the colours.
+    bands = np.linspace(v_min, v_max, n_colours)
+    gap = bands[1] - bands[0]
+    bands_to_plot = np.array([bands[0] - gap, *list(bands)])#, bands[-1] + gap])
+    midpoints = bands_to_plot - 0.5 * gap
+
+    inds = np.digitize(gdf['outcome'], bands)
+    mids = midpoints[inds]
+    gdf['inds'] = inds
+    gdf['mids'] = mids
+
+    # Get colour values:
+    import matplotlib.pyplot as plt
+    cmap = plt.get_cmap()
+    cbands = np.linspace(0.0, 1.0, len(bands)+2)
+    colours = cmap(cbands)
+    # Convert from (0.0 to 1.0) to (0 to 255):
+    colour_list = (colours * 255.0).astype(int)
+    # Convert tuples to strings:
+    # colour_list = np.array([
+    #     '#%02x%02x%02x%02x' % tuple(c) for c in colour_list])
+    colour_list = np.array([
+        f'rgba{tuple(c)}' for c in colour_list])
+    colour_list[2] = 'red'
+    # Sample colour list:
+    lsoa_colours = colour_list[inds]
+    # Set NaN to invisible:
+    lsoa_colours[pd.isna(gdf['outcome'])] = '#00000000'
+    gdf['colour'] = lsoa_colours
+
+    colour_map = [[float(c), colour_list[i]] for i, c in enumerate(cbands)]
+
+    st.write(colour_map)
+    # st.write(gdf.crs)
+
     fig = go.Figure()
 
     fig.update_layout(
@@ -246,7 +283,8 @@ def plotly_big_map(gdf, column_colour, column_geometry):
         # gdf,
         geojson=gdf.geometry.__geo_interface__,
         locations=gdf.index,
-        z=gdf.outcome,
+        z=gdf.mids.astype(str),
+        # colorscale=colour_map,  # gdf.inds,  # pd.cut(gdf.outcome, bins=np.arange(v_min, v_max+0.11, 0.1)).astype(str),
         # featureidkey='properties.LSOA11NM',
         coloraxis="coloraxis",
         # colorscale='Inferno',
@@ -354,6 +392,34 @@ st.markdown('# Geopandas')
 
 startTime = datetime.now()
 
+# Outcome type input:
+outcome_type_str = st.radio(
+    'Select the outcome measure',
+    ['Added utility', 'Mean shift in mRS', 'mRS <= 2'],
+    horizontal=True
+)
+# Match the input string to the file name string:
+outcome_type_dict = {
+    'Added utility': 'utility_shift',
+    'Mean shift in mRS': 'mRS shift',
+    'mRS <= 2': 'mRS 0-2'
+}
+outcome_type = outcome_type_dict[outcome_type_str]
+
+# Scenario input:
+scenario_type_str = st.radio(
+    'Select the scenario',
+    ['Drip-and-ship', 'Mothership', 'Difference'],
+    horizontal=True
+)
+# Match the input string to the file name string:
+scenario_type_dict = {
+    'Drip-and-ship': 'drip-and-ship',
+    'Mothership': 'mothership',
+    'Difference': 'diff_drip-and-ship_minus_mothership'
+}
+scenario_type = scenario_type_dict[scenario_type_str]
+
 # Load outcome data
 time_o_start = datetime.now()
 # Load data files
@@ -382,22 +448,55 @@ gdf_boundaries_lsoa = _load_geometry_lsoa(df_lsoa)
 time_m_end = datetime.now()
 st.write(f'Time to merge geography and outcomes: {time_m_end - time_m_start}')
 
+# Find geometry column for plot function:
+col_geo = find_multiindex_column_names(
+    gdf_boundaries_lsoa, property=['geometry'])
+gdf_boundaries_lsoa = gdf_boundaries_lsoa.set_geometry(col_geo)
+
+# Find shared colour scale limits for this outcome measure:
+if 'diff' in scenario_type:
+    cols = find_multiindex_column_names(
+        gdf_boundaries_lsoa,
+        property=[outcome_type],
+        scenario=[scenario_type],
+        subtype=['mean']
+        )
+    v_values = gdf_boundaries_lsoa[cols]
+    v_max = np.nanmax(v_values.values)
+    v_min = np.nanmin(v_values.values)
+    v_limit = max(abs(v_max), abs(v_min))
+    v_max = abs(v_limit)
+    v_min = -abs(v_limit)
+else:
+    cols = find_multiindex_column_names(
+        gdf_boundaries_lsoa,
+        property=[outcome_type],
+        subtype=['mean']
+        )
+    # Remove the 'diff' column:
+    cols = [c for c in cols if 'diff' not in c[1]]
+    v_values = gdf_boundaries_lsoa[cols]
+    v_max = np.nanmax(v_values.values)
+    v_min = np.nanmin(v_values.values)
+
+
+# Selected column to use for colour values:
+col_col = find_multiindex_column_names(
+    gdf_boundaries_lsoa,
+    property=[outcome_type],
+    scenario=[scenario_type],
+    subtype=['mean']
+    )
+
 # Plot map:
 time_p_start = datetime.now()
 with st.spinner(text='Drawing map'):
-    col_col = find_multiindex_column_names(
-        gdf_boundaries_lsoa,
-        property=['mRS shift'],
-        scenario=['mothership'],
-        subtype=['mean']
-        )
-    col_geo = find_multiindex_column_names(
-        gdf_boundaries_lsoa, property=['geometry'])
-    gdf_boundaries_lsoa = gdf_boundaries_lsoa.set_geometry(col_geo)
     plotly_big_map(
         gdf_boundaries_lsoa,
         column_colour=col_col,
-        column_geometry=col_geo
+        column_geometry=col_geo,
+        v_max=v_max,
+        v_min=v_min
         )
 time_p_end = datetime.now()
 st.write(f'Time to draw map: {time_p_end - time_p_start}')
