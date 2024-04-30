@@ -53,14 +53,95 @@ x_list, y_list = convert_shapely_polys_into_xy(gdf_catchment)
 gdf_catchment['x'] = x_list
 gdf_catchment['y'] = y_list
 
-# Assign random colours:
-colours = ['red', 'blue', 'green', 'orange']
-colour_list = np.random.choice(colours, size=len(gdf_catchment))
-gdf_catchment['colour'] = colour_list
+# Invent some value to colour by:
+np.random.seed(42)
+vals = (np.random.rand(len(gdf_catchment)) - 0.5) * 8.0
+v_max = 4.0
+v_min = -4.0
+# Set a few values to be outside the specified colour range:
+mask = np.random.binomial(1, 0.2, size=len(vals)) == 1
+vals[mask] = -5.0
+mask = np.random.binomial(1, 0.2, size=len(vals)) == 1
+vals[mask] = 5.0
+gdf_catchment['z'] = vals
 
+# Colours:
+colour_under = 'magenta'
+colour_over = 'LimeGreen'
+colours = [colour_under, 'SteelBlue', 'blue', 'SkyBlue', 'MidnightBlue', colour_over]
+# Colour bounds:
+# red for 0.0 to 0.1,
+# blue for 0.1 to 0.5,
+# green for 0.5 to 0.6,
+# orange for 0.6 to 1.0.
+# bounds = [0.00, 0.10, 0.50, 0.60, 1.00]
+v_bounds = [-4.0, -2.0, 0.0, 3.0, 4.0]
+
+
+# Assign colours to the data:
+inds = np.digitize(gdf_catchment['z'], v_bounds)
+gdf_catchment['colour'] = np.array(colours)[inds]
+
+# Normalise the data bounds:
+bounds = (
+    (np.array(v_bounds) - np.min(v_bounds)) /
+    (np.max(v_bounds) - np.min(v_bounds))
+)
+# Add extra bounds so that there's a tiny space at either end
+# for the under/over colours.
+bounds_for_cs = [bounds[0], bounds[0] + 1e-7, *bounds[1:-1], bounds[-1] - 1e-7, bounds[-1]]
+
+# Need separate data values and colourbar values.
+# e.g. translate 32 in the data means colour 0.76 on the colourmap.
+
+# Create a colour scale from these colours.
+# To get the discrete colourmap (i.e. no continuous gradient of
+# colour made between the defined colours),
+# double up the bounds so that colour A explicitly ends where
+# colour B starts.
+colourscale = []
+for i in range(len(colours)):
+    colourscale += [[bounds_for_cs[i], colours[i]], [bounds_for_cs[i+1], colours[i]]]
+
+# Dummy coordinates:
+x_dummy = np.linspace(10, 100000, len(v_bounds))
+y_dummy = np.linspace(10, 100000, len(v_bounds))
+# Have to show the full colour scale otherwise the colourbar
+# colours will look right but the ticks will appear in the wrong
+# location. e.g. if don't plot a point with colour 0.0, first colour
+# is 0.1, then the bottom of the colourbar will be labelled with
+# tick 0.1 instead of the intended tick 0.0.
+z_dummy = np.array(v_bounds)#[1:] - 1e-3
 
 # ----- Plotting -----
 fig = make_subplots(rows=1, cols=2)
+
+# Sometimes the ticks don't show at the very ends of the colour bars.
+# In that case, cheat with e.g.
+# tick_locs = [bounds[0] + 1e-2, *bounds[1:-1], bounds[-1] - 1e-3]
+tick_locs = v_bounds
+tick_names = v_bounds
+
+# Add dummy scatter:
+fig.add_trace(go.Scatter(
+    x=x_dummy,
+    y=y_dummy,
+    marker=dict(
+        color=z_dummy,
+        colorscale=colourscale,
+        colorbar=dict(
+            thickness=20,
+            tickmode='array',
+            tickvals=tick_locs,
+            ticktext=tick_names,
+            # ticklabelposition='outside top'
+            ),
+        size=1e-4,
+        ),
+    showlegend=False,
+    mode='markers',
+    hoverinfo='skip'
+))
 
 # Add each row of the dataframe separately.
 # Scatter the edges of the polygons and use "fill" to colour
@@ -73,6 +154,7 @@ for i in gdf_catchment.index:
         fillcolor=gdf_catchment.loc[i, 'colour'],
         line_color='black',
         name=gdf_catchment.loc[i, 'nearest_ivt_unit'],
+        showlegend=False
         ), row='all', col='all')
 
 # Equivalent to pyplot set_aspect='equal':
