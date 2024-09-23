@@ -84,7 +84,7 @@ unit2 = df_units.loc[df_units['stroke_team'] == unit2_name].index.values[0]
 
 # Colourmap selection
 cmap_names = [
-    'cosmic_r', 'viridis_r', 'inferno_r', 'neutral_r'
+    'cosmic_r', 'viridis_r', 'inferno_r', 'neutral_r',
     ]
 cmap_diff_names = [
     'iceburn_r', 'seaweed', 'fusion', 'waterlily'
@@ -228,6 +228,13 @@ burned_rhs = features.rasterize(
 )
 burned_rhs = np.flip(burned_rhs, axis=0)
 
+# Load colour info:
+cmap_lhs = inputs.make_colour_list(cmap_name)
+cmap_rhs = inputs.make_colour_list(cmap_diff_name)
+
+
+# Load stroke unit coordinates:
+gdf_unit_coords = stroke_maps.load_data.stroke_unit_coordinates()
 
 # ----- Plotting -----
 fig = make_subplots(
@@ -245,7 +252,7 @@ fig.add_trace(go.Heatmap(
     dy=pixel_size,
     zmin=0,
     zmax=tmax,
-    colorscale='Viridis',
+    colorscale=cmap_lhs,
     colorbar=dict(
         thickness=20,
         # tickmode='array',
@@ -264,9 +271,9 @@ fig.add_trace(go.Heatmap(
     dx=pixel_size,
     y0=ymin,
     dy=pixel_size,
-    zmin=tmax_diff,
+    zmin=-tmax_diff,
     zmax=tmax_diff,
-    colorscale='RdBu',
+    colorscale=cmap_rhs,
     colorbar=dict(
         thickness=20,
         # tickmode='array',
@@ -303,9 +310,25 @@ fig.update_traces(
     selector={'name': 'diff'}
     )
 
+# Stroke unit locations:
+fig.add_trace(go.Scatter(
+    x=gdf_unit_coords['BNG_E'],
+    y=gdf_unit_coords['BNG_N'],
+    mode='markers',
+    name='units'
+), row='all', col='all')
+
 # Equivalent to pyplot set_aspect='equal':
 fig.update_yaxes(col=1, scaleanchor='x', scaleratio=1)
 fig.update_yaxes(col=2, scaleanchor='x2', scaleratio=1)
+
+# Shared pan and zoom settings:
+fig.update_xaxes(matches='x')
+fig.update_yaxes(matches='y')
+
+# Remove axis ticks:
+fig.update_xaxes(showticklabels=False, showgrid=False, zeroline=False)
+fig.update_yaxes(showticklabels=False, showgrid=False, zeroline=False)
 
 with container_maps:
     # Write to streamlit:

@@ -94,6 +94,34 @@ def set_up_colours(
     return colour_dict
 
 
+def make_colour_list(cmap_name='viridis', n_colours=101):
+    # Get colour values:
+    try:
+        # Matplotlib colourmap:
+        cmap = plt.get_cmap(cmap_name)
+    except ValueError:
+        # CMasher colourmap:
+        cmap = plt.get_cmap(f'cmr.{cmap_name}')
+
+    cbands = np.linspace(0.0, 1.0, n_colours)
+    colour_list = cmap(cbands)
+    # # Convert tuples to strings:
+    # Use format_float_positional to stop tiny floats being printed
+    # with scientific notation.
+    colour_list = np.array([
+        'rgba(' +
+        ','.join([f'{np.format_float_positional(c1, precision=100)}' for c1 in c]) +
+        ')' for c in colour_list
+        ])
+        # f'rgba{tuple(c)}' for c in colour_list])
+
+    # while ((colour_list[0] == 'rgba(0.,0.,0.,1.)') & (colour_list[-1] == 'rgba(1.,1.,1.,1.)')) | ((colour_list[-1] == 'rgba(0.,0.,0.,1.)') & (colour_list[0] == 'rgba(1.,1.,1.,1.)')):
+    #     colour_list = colour_list[1:]
+    # Plotly doesn't seem to handle white well so remove it:
+    colour_list = [c for c in colour_list if c != 'rgba(1.,1.,1.,1.)']
+    return colour_list
+
+
 def make_colour_map_dict(v_bands_str, cmap_name='viridis'):
     # Get colour values:
     try:
@@ -106,8 +134,14 @@ def make_colour_map_dict(v_bands_str, cmap_name='viridis'):
     cbands = np.linspace(0.0, 1.0, len(v_bands_str))
     colour_list = cmap(cbands)
     # # Convert tuples to strings:
+    # Use format_float_positional to stop tiny floats being printed
+    # with scientific notation.
     colour_list = np.array([
-        f'rgba{tuple(c)}' for c in colour_list])
+        'rgba(' +
+        ','.join([f'{np.format_float_positional(c1, precision=100)}' for c1 in c]) +
+        ')' for c in colour_list
+        ])
+        # f'rgba{tuple(c)}' for c in colour_list])
     # Sample the colour list:
     colour_map = [(c, colour_list[i]) for i, c in enumerate(v_bands_str)]
 
