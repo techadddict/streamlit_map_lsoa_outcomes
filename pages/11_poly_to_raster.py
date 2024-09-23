@@ -194,6 +194,7 @@ gdf['geometry'] = [
     for g in gdf['geometry'].values
     ]
 
+# Code source for conversion to raster: https://gis.stackexchange.com/a/475845
 # Prepare some variables
 xmin, ymin, xmax, ymax = gdf.total_bounds
 pixel_size = 1000
