@@ -82,6 +82,7 @@ v_bounds = [-4.0, -2.0, 0.0, 3.0, 4.0]
 inds = np.digitize(gdf_catchment['z'], v_bounds)
 gdf_catchment['colour'] = np.array(colours)[inds]
 
+v_bounds = [-5.0, -4.0, -2.0, 0.0, 3.0, 4.0, 5.0]
 # Normalise the data bounds:
 bounds = (
     (np.array(v_bounds) - np.min(v_bounds)) /
@@ -89,7 +90,8 @@ bounds = (
 )
 # Add extra bounds so that there's a tiny space at either end
 # for the under/over colours.
-bounds_for_cs = [bounds[0], bounds[0] + 1e-7, *bounds[1:-1], bounds[-1] - 1e-7, bounds[-1]]
+# bounds_for_cs = [bounds[0], bounds[0] + 1e-7, *bounds[1:-1], bounds[-1] - 1e-7, bounds[-1]]
+bounds_for_cs = bounds
 
 # Need separate data values and colourbar values.
 # e.g. translate 32 in the data means colour 0.76 on the colourmap.
@@ -111,7 +113,7 @@ y_dummy = np.linspace(10, 100000, len(v_bounds))
 # location. e.g. if don't plot a point with colour 0.0, first colour
 # is 0.1, then the bottom of the colourbar will be labelled with
 # tick 0.1 instead of the intended tick 0.0.
-z_dummy = np.array(v_bounds)#[1:] - 1e-3
+z_dummy = np.array(bounds)#[1:] - 1e-3
 
 # ----- Plotting -----
 fig = make_subplots(rows=1, cols=2)
@@ -119,8 +121,10 @@ fig = make_subplots(rows=1, cols=2)
 # Sometimes the ticks don't show at the very ends of the colour bars.
 # In that case, cheat with e.g.
 # tick_locs = [bounds[0] + 1e-2, *bounds[1:-1], bounds[-1] - 1e-3]
-tick_locs = v_bounds
+tick_locs = bounds_for_cs
 tick_names = v_bounds
+
+tick_names = ['↓', *v_bounds[1:-1], '↑']
 
 # Add dummy scatter:
 fig.add_trace(go.Scatter(
@@ -135,6 +139,7 @@ fig.add_trace(go.Scatter(
             tickvals=tick_locs,
             ticktext=tick_names,
             # ticklabelposition='outside top'
+            title='Testing please'
             ),
         size=1e-4,
         ),

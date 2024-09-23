@@ -271,7 +271,7 @@ def plotly_two_subplots():
     )
     fig.update_traces(hovertemplate='%{z}<extra>%{location}</extra>')
 
-    fig.write_html('data_maps/plotly_dual_test.html')
+    # fig.write_html('data_maps/plotly_dual_test.html')
 
     st.plotly_chart(fig)
 
