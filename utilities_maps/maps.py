@@ -221,7 +221,7 @@ def dissolve_polygons_by_value(
     else:
         # Load LSOA geometry:
         # path_to_lsoa = os.path.join('data', 'outline_lsoa11cds.geojson')
-        path_to_lsoa = os.path.join('data_maps', 'LSOA.geojson')
+        path_to_lsoa = os.path.join('data_maps', 'LSOA_(Dec_2011)_Boundaries_Super_Generalised_Clipped_(BSC)_EW_V3_reduced4_simplified.geojson')
         gdf = geopandas.read_file(path_to_lsoa)
         # Merge in column:
         gdf = pd.merge(gdf, df_lsoa,
