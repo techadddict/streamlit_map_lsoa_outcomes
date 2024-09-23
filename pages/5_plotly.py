@@ -141,7 +141,7 @@ def plotly_big_map():
     )
     fig.update_traces(hovertemplate='%{z}<extra>%{location}</extra>')
 
-    fig.write_html('data_maps/plotly_test.html')
+    # fig.write_html('data_maps/plotly_test.html')
 
     st.plotly_chart(fig)
 
