@@ -14,8 +14,8 @@ localtileserver==0.6
 rio-cogeo==3.5
 geopandas==0.12.2
 plotly==5.16.1
-rasterio=1.3.6
-geojson-rewind=1.0.3
+rasterio==1.3.6
+geojson-rewind==1.0.3
 # Don't give a version for streamlit 
 # to ensure the app has the latest security updates. 
 streamlit
